@@ -10,7 +10,7 @@
  * en `ctx`: la regla sigue siendo pura y no toca la base de datos.
  */
 import { severityOf } from "./catalog";
-import { daysBetween, formatCOP, isNum, normalizeObjeto } from "./format";
+import { daysBetween, formatCOP, isNum, objetoKey } from "./format";
 import { THRESHOLDS } from "./thresholds";
 import { entitySupplierKey } from "./types";
 import type { ContractRow, Finding, Rule, RuleContext } from "./types";
@@ -22,7 +22,8 @@ export const fraccionamiento: Rule = {
   code: CODE,
 
   run(c: ContractRow, ctx: RuleContext): Finding | null {
-    const { minContratos, ventanaDias, valorMaximoCop } = THRESHOLDS.FRACCIONAMIENTO;
+    const { minContratos, ventanaDias, valorMaximoCop, objetoPrefijoChars } =
+      THRESHOLDS.FRACCIONAMIENTO;
 
     const key = entitySupplierKey(c);
     if (!key) return null;
@@ -31,8 +32,8 @@ export const fraccionamiento: Rule = {
     // no es una porción de nada.
     if (!isNum(c.valor_contrato) || c.valor_contrato > valorMaximoCop) return null;
 
-    const objetoNorm = normalizeObjeto(c.objeto);
-    if (!objetoNorm) return null;
+    const objetoClave = objetoKey(c.objeto, objetoPrefijoChars);
+    if (!objetoClave) return null;
 
     const candidatos = (ctx.peersByEntitySupplier.get(key) ?? [])
       .filter(
@@ -40,7 +41,7 @@ export const fraccionamiento: Rule = {
           p.fecha_firma !== null &&
           isNum(p.valor_contrato) &&
           p.valor_contrato <= valorMaximoCop &&
-          normalizeObjeto(p.objeto) === objetoNorm,
+          objetoKey(p.objeto, objetoPrefijoChars) === objetoClave,
       )
       .sort((a, b) => (a.fecha_firma! < b.fecha_firma! ? -1 : 1));
 
@@ -90,7 +91,8 @@ export const fraccionamiento: Rule = {
         dias_reales_entre_extremos: spanDias,
         valor_maximo_por_contrato: valorMaximoCop,
         valor_total_ventana: valorTotal,
-        objeto_normalizado: objetoNorm,
+        objeto_clave: objetoClave,
+        objeto_prefijo_chars: objetoPrefijoChars,
         nit_entidad: c.nit_entidad,
         documento_proveedor: c.documento_proveedor,
         fecha_desde: desde,

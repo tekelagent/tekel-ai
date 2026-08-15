@@ -80,6 +80,33 @@ describe("FRACCIONAMIENTO — dispara", () => {
     expect(fraccionamiento.run(cs[0], ctxOf(cs))).not.toBeNull();
   });
 
+  it("agrupando objetos que solo difieren después del carácter 60", () => {
+    // En SECOP el objeto suele cerrar con el número de contrato o la vigencia.
+    // Los primeros 60 caracteres normalizados son idénticos en los cuatro.
+    const cs = grupo([
+      {
+        fecha_firma: "2025-01-10",
+        objeto: "Prestación de servicios profesionales de apoyo jurídico a la entidad, contrato 001 de 2025",
+      },
+      {
+        fecha_firma: "2025-02-10",
+        objeto: "Prestación de servicios profesionales de apoyo jurídico a la entidad, contrato 002 de 2025",
+      },
+      {
+        fecha_firma: "2025-03-10",
+        objeto: "Prestación de servicios profesionales de apoyo jurídico a la entidad, contrato 003 de 2025",
+      },
+      {
+        fecha_firma: "2025-04-05",
+        objeto: "Prestación de servicios profesionales de apoyo jurídico a la entidad, contrato 004 de 2025",
+      },
+    ]);
+    const f = fraccionamiento.run(cs[0], ctxOf(cs));
+    expect(f).not.toBeNull();
+    expect(f!.evidence.objeto_prefijo_chars).toBe(60);
+    expect(String(f!.evidence.objeto_clave)).toHaveLength(60);
+  });
+
   it("con un detail en español que no acusa", () => {
     const cs = grupoQueDispara();
     const { detail } = fraccionamiento.run(cs[0], ctxOf(cs))!;
@@ -125,6 +152,18 @@ describe("FRACCIONAMIENTO — no dispara", () => {
     const cs = grupoQueDispara();
     cs[0].valor_contrato = 80_000_000;
     // Un contrato grande no es una porción de una compra partida.
+    expect(fraccionamiento.run(cs[0], ctxOf(cs))).toBeNull();
+  });
+
+  it("cuando los objetos difieren dentro de los primeros 60 caracteres", () => {
+    // Comparten la fórmula de apertura pero divergen en la materia del
+    // contrato: jurídico, contable, técnico, ambiental. No son la misma compra.
+    const cs = grupo([
+      { fecha_firma: "2025-01-10", objeto: "Prestación de servicios profesionales de apoyo jurídico a la entidad" },
+      { fecha_firma: "2025-02-10", objeto: "Prestación de servicios profesionales de apoyo contable a la entidad" },
+      { fecha_firma: "2025-03-10", objeto: "Prestación de servicios profesionales de apoyo técnico a la entidad" },
+      { fecha_firma: "2025-04-05", objeto: "Prestación de servicios profesionales de apoyo ambiental a la entidad" },
+    ]);
     expect(fraccionamiento.run(cs[0], ctxOf(cs))).toBeNull();
   });
 

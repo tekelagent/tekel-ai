@@ -27,6 +27,18 @@ export const THRESHOLDS = {
     ventanaDias: 90,
     /** Techo de cuantía: por encima de esto ya no es "contrato pequeño". */
     valorMaximoCop: 50_000_000,
+    /**
+     * Caracteres del objeto normalizado que se comparan entre contratos.
+     *
+     * Comparar el objeto completo no funciona con datos reales: en SECOP el
+     * objeto es una descripción larga y casi única, que suele cerrar con el
+     * nombre del contratista, el número del contrato o la vigencia. Dos compras
+     * equivalentes casi nunca producen el mismo string entero, pero sí
+     * comparten el arranque. Medido sobre los 20.000 contratos de Atlántico:
+     * objeto completo daba 0 grupos, 60 caracteres da 4, y 30 da 15 a costa de
+     * agrupar por la mera fórmula de apertura ("prestacion de servicios prof…").
+     */
+    objetoPrefijoChars: 60,
   },
 
   CONCENTRACION_PROVEEDOR: {

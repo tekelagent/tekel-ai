@@ -61,6 +61,19 @@ export function normalizeObjeto(s: string | null): string {
     .trim();
 }
 
+/**
+ * Clave de comparación de objetos contractuales: el objeto normalizado
+ * recortado a sus primeros `chars` caracteres.
+ *
+ * En SECOP el objeto cierra a menudo con datos que varían entre contratos
+ * equivalentes (nombre del contratista, número de contrato, vigencia), así que
+ * comparar el texto completo no agrupa nada. El prefijo conserva el núcleo del
+ * objeto y descarta esa cola variable.
+ */
+export function objetoKey(objeto: string | null, chars: number): string {
+  return normalizeObjeto(objeto).slice(0, chars);
+}
+
 /** true si el número es utilizable en aritmética (no null, no NaN). */
 export function isNum(n: number | null | undefined): n is number {
   return typeof n === "number" && Number.isFinite(n);
