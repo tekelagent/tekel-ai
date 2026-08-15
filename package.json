@@ -12,7 +12,8 @@
     "ingest": "tsx scripts/ingest.ts",
     "apply-rules": "tsx scripts/apply-rules.ts",
     "enrich": "tsx scripts/enrich.ts",
-    "preview-expediente": "tsx scripts/preview-expediente.ts"
+    "preview-expediente": "tsx scripts/preview-expediente.ts",
+    "probe-croma": "tsx scripts/probe-croma.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.3",
