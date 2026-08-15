@@ -1,0 +1,7 @@
+allowBuilds:
+  # tsx resuelve el binario desde @esbuild/win32-x64 (dependencia opcional),
+  # así que no necesita el script de postinstall. Declararlo explícitamente
+  # evita que `pnpm install` salga con ERR_PNPM_IGNORED_BUILDS (exit 1).
+  esbuild: false
+  sharp: false
+  unrs-resolver: false
