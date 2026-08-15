@@ -57,6 +57,10 @@ create table if not exists contracts (
   risk_score                integer,
   risk_level                text check (risk_level in ('bajo','medio','critico')),
   resumen_riesgo            text,   -- 2 líneas generadas por Capa B
+  -- triaje de METODOLOGIA §4
+  prioridad                 text check (prioridad in ('P1','P2','P3')),
+  plata_en_riesgo           numeric, -- vigentes: pendiente · históricos: pagado
+  porque_ahora              jsonb,   -- razones en español compuestas desde los datos
   ingested_at               timestamptz not null default now(),
   enriched_at               timestamptz
 );
@@ -87,6 +91,9 @@ create table if not exists findings (
   detail       text,            -- explicación en español para la UI
   evidence     jsonb,           -- cifras, citas textuales, página del PDF, payload Croma
   source       text not null check (source in ('rules','llm','croma')),
+  -- calificación del hallazgo (METODOLOGIA §3)
+  confianza    text check (confianza in ('alta','media','baja')),
+  foco         text check (foco in ('entidad','contratista','ambos')),
   created_at   timestamptz not null default now(),
   unique (contract_id, pattern_code, source)  -- idempotente: re-correr no duplica
 );

@@ -32,29 +32,38 @@ Demo funcional 20 · Viabilidad 15 · Ejecución técnica + UX 15.
 - **Capa B — enrich (`scripts/enrich.ts`)**: LLM barato por lote sobre campos estructurados. Produce `resumen_riesgo` + findings semánticos.
 - **Capa C — deep (route handler + `deep_analyses`)**: on-click. Croma en vivo (RUES por NIT, antecedentes del representante, contratos-por-proveedor, sanciones) + LLM profundo que consolida narrativa. Si hay PDF del pliego: análisis pliego-sastre con citas textuales + página. Resultado se cachea en `deep_analyses` (segundo clic = instantáneo y $0).
 
-## Patrones y pesos (motor de scoring)
+## Patrones, priorización y criterio normativo
 
-`risk_score = min(100, Σ points)` · Niveles: 0-29 bajo · 30-64 medio · 65+ crítico.
-La IA ENCUENTRA hallazgos; el motor PONDERA con estos pesos fijos (auditable):
+**La fuente de verdad es [docs/METODOLOGIA.md](docs/METODOLOGIA.md). Ante cualquier
+ambigüedad, manda ese documento.** No dupliques aquí la tabla de patrones: si los
+pesos, umbrales o condiciones de exclusión cambian, cambian allá.
 
-| pattern_code            | Capa  | Pesa más en | Pts | Descripción corta                                              |
-|-------------------------|-------|-------------|-----|----------------------------------------------------------------|
-| INHABILIDAD_REP_LEGAL   | Croma | ambos       | 45  | Antecedente fiscal/disciplinario vigente del representante      |
-| PROVEEDOR_RECIENTE      | Croma | ambos       | 40  | Empresa <90 días y/o capital mínimo vs cuantía                  |
-| ADICIONES_50            | A     | histórico   | 40  | Adiciones acumuladas >50% del valor inicial (Ley 80 art. 40)    |
-| FRACCIONAMIENTO         | A     | ambos       | 30  | Contratos pequeños repetidos, mismo proveedor+entidad+objeto    |
-| PLIEGO_SASTRE           | C-LLM | ambos       | 25  | Ficha técnica que restringe competencia (cita textual + página) |
-| DESEQUILIBRIO_PAGOS     | A     | vigente     | 25  | % pagado ≫ % de tiempo transcurrido del contrato                |
-| PLAZO_RELAMPAGO         | C-LLM | vigente     | 25  | Ventana de ofertas <3 días hábiles en alta cuantía              |
-| SANCIONES_PREVIAS       | Croma | ambos       | 25  | Sanciones previas del proveedor en SECOP                        |
-| CONCENTRACION_PROVEEDOR | A     | histórico   | 20  | Mismo NIT acumula N contratos con la misma entidad              |
-| OBJETO_CIIU_INCOHERENTE | Croma | ambos       | 20  | Actividad RUES sin relación con el objeto contratado            |
-| PAGO_ADELANTADO_RIESGO  | A     | vigente     | 10  | Anticipo habilitado (sube a 30 si proveedor reciente)           |
-| DICIEMBRE               | A     | histórico   | 10  | Firma en diciembre (quema de presupuesto)                       |
-| OBJETO_DIFUSO           | B-LLM | ambos       | 10  | Objeto contractual vago/genérico para la cuantía                |
+Lo que hay que leer antes de tocar el motor:
 
-En modo vigente, la UI ordena por score y destaca `valor_pendiente_ejecucion`
-(la plata aún recuperable). En modo histórico, agrupa por proveedor/entidad
+- **§3 Catálogo de patrones** — los 16 `pattern_code` con su capa, foco, puntos y
+  criterio normativo, más las condiciones de exclusión y confianza de la Capa A.
+- **§4 Modelo de priorización** — score (Σ puntos, tope 100; 0-29 bajo, 30-64
+  medio, 65+ crítico) y triaje P1/P2/P3 con materialidad y corroboración.
+- **§5 Expediente de Priorización** — la salida por contrato, en formato
+  condición-criterio-efecto.
+- **§6 Controles de precisión** — abstención sobre invención, anti-alucinación
+  normativa, calibración esperada (~1-3% crítico).
+- **§7 Límites declarados** — lo que Tekel explícitamente NO hace.
+
+Dónde vive cada cosa en el código:
+
+| Concepto de METODOLOGIA | Implementación |
+|---|---|
+| §3 pesos y metadatos de patrones | `lib/rules/catalog.ts` |
+| §3 criterio normativo por patrón | `lib/normativa/catalog.ts` |
+| §3 umbrales y condiciones de exclusión | `lib/rules/thresholds.ts` |
+| §3 una regla determinista | `lib/rules/<regla>.ts` |
+| §4 score y niveles | `lib/rules/score.ts` |
+| §4 triaje y "por qué ahora" | `lib/rules/priority.ts` |
+| §5 expediente | `lib/expediente.ts` |
+
+En modo vigente, la UI ordena por prioridad y destaca `plata_en_riesgo`
+(lo aún recuperable). En modo histórico, agrupa por proveedor/entidad
 (redes) y muestra totales.
 
 ## Convenciones
