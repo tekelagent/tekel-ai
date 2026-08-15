@@ -1,6 +1,17 @@
 -- ============================================================
 -- Tekel Agent — Schema Supabase (Postgres)
--- Pegar completo en: Supabase Dashboard → SQL Editor → Run
+--
+-- ESTE ARCHIVO ES DOCUMENTACIÓN, NO SE EJECUTA.
+--
+-- Es la vista legible y completa del schema, útil para entender el
+-- modelo de un vistazo. NO lo pegues en el SQL Editor y NO lo edites
+-- esperando que cambie la base.
+--
+-- La fuente de verdad es supabase/migrations/. Para cambiar el schema:
+--   1. supabase migration new <nombre>
+--   2. escribe el ALTER/CREATE en el archivo generado
+--   3. infisical run --env=dev -- supabase db push --yes
+--   4. refleja el cambio aquí, para que esta vista siga al día
 -- ============================================================
 
 create extension if not exists pgcrypto;

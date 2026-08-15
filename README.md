@@ -31,29 +31,36 @@ y **contratos históricos** (evidencia accionable para entes de control).
 - **Capa B — LLM batch (~$0.0004/contrato):** coherencia semántica + resumen de riesgo.
 - **Capa C — Profundo on-click:** forense Croma en vivo + análisis de pliego (PDF) con citas.
 
-## Orden de ejecución (Paso 1)
+## Orden de ejecución
 
-1. **Schema**: Supabase Dashboard → SQL Editor → pegar `supabase/schema.sql` → Run.
-2. **Env**: copia `env.example` a `.env.local` y llena las llaves.
-3. **Deps** (dentro del repo, tras scaffold de Next.js o export de v0):
+Los secretos viven en Infisical (proyecto `tekelagent`, entorno `dev`), así que
+todo comando que los necesite se lanza con `infisical run --env=dev -- <cmd>`.
+Sin Infisical: copia `env.example` a `.env.local` y llena las llaves.
+
+1. **Deps**:
    ```bash
-   pnpm add @supabase/supabase-js
-   pnpm add -D tsx typescript @types/node
+   pnpm install
    ```
-4. **Verifica columnas reales del dataset** (¡siempre primero!):
+2. **Schema**: se aplica por CLI desde `supabase/migrations/`, que es la fuente
+   de verdad. No se pega nada en el SQL Editor del Dashboard;
+   `supabase/schema.sql` es solo documentación legible.
    ```bash
-   pnpm tsx scripts/ingest.ts --inspect
-   pnpm tsx scripts/ingest.ts --values departamento
-   pnpm tsx scripts/ingest.ts --values estado_contrato
+   infisical run --env=dev -- supabase db push --yes
+   ```
+   Para cambiarlo: `supabase migration new <nombre>`, escribe el ALTER, `db push`.
+3. **Verifica columnas reales del dataset** (¡siempre primero!):
+   ```bash
+   infisical run --env=dev -- pnpm ingest --inspect
+   infisical run --env=dev -- pnpm ingest --values departamento
+   infisical run --env=dev -- pnpm ingest --values estado_contrato
    ```
    Si algún nombre difiere, ajusta el mapa `COL` al inicio de `scripts/ingest.ts`.
-5. **Ingesta** (Atlántico vigentes + históricos 5 años; Bogotá para contraste):
+4. **Ingesta** (Atlántico vigentes + históricos; Bogotá para contraste):
    ```bash
-   pnpm tsx scripts/ingest.ts --departamento "Atlántico" --modo vigentes
-   pnpm tsx scripts/ingest.ts --departamento "Atlántico" --modo historicos --desde 2021-08-15 --max-rows 8000
-   pnpm tsx scripts/ingest.ts --departamento "Distrito Capital de Bogotá" --modo vigentes --max-rows 5000
+   infisical run --env=dev -- pnpm ingest --departamento "Atlántico" --modo vigentes --max-rows 12000
+   infisical run --env=dev -- pnpm ingest --departamento "Atlántico" --modo historicos --desde 2023-01-01 --max-rows 8000
+   infisical run --env=dev -- pnpm ingest --departamento "Distrito Capital de Bogotá" --modo vigentes --max-rows 5000
    ```
-   (El nombre exacto de Bogotá confírmalo con `--values departamento`.)
 
 ## Estructura del repo
 
