@@ -156,6 +156,22 @@ efecto). Deliberadamente NO se afirma "causa": eso es del investigador.
    cruces por NIT/cédula son los únicos de confianza alta.
 7. **Idempotencia y auditoría:** re-correr el motor no duplica hallazgos; cada
    corrida queda registrada (ingest_runs / timestamps en evidence).
+8. **Valores inverosímiles:** cuando una entidad reporta una cifra imposible, el
+   contrato **se marca, no se corrige ni se oculta** (`contracts.valor_verificar`).
+   Que el reporte sea imposible es en sí un dato de transparencia. Se marca si
+   `valor_contrato` supera **1 billón COP** —para un corpus departamental, un
+   contrato individual por encima de esa cifra es casi con certeza error de
+   reporte— o si el valor es ≤ 0 pero hay pagos registrados. Los marcados quedan
+   fuera de todo agregado y del pool de comparables de VALOR_ATIPICO, y se
+   muestran con el aviso *"Valor reportado inverosímil según SECOP — verificar en
+   la fuente"*. La razón es que el titular "$X en riesgo" debe ser defendible
+   ante un auditor: en el corpus de Atlántico, 4 contratos de 20.000 inflaban la
+   suma total 545 veces.
+9. **Estados previos a la ejecución:** `Borrador`, `En aprobación` y `Cancelado`
+   se clasifican siempre como `vigencia = 'otro'`, antes de cualquier inferencia
+   por fecha. Un borrador no es plata en riesgo y un cancelado no es evidencia
+   histórica; contarlos como vigentes inflaba la bandeja de prioridad. Los `otro`
+   quedan fuera de ambos modos, de los agregados y del triaje.
 
 ## 7. Límites declarados (y honestos)
 

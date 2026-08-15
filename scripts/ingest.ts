@@ -86,13 +86,38 @@ function toUrl(v: unknown): string | null {
 
 const VIGENTES = ["en ejecución", "en ejecucion", "activo", "modificado", "suspendido", "prorrogado"];
 const HISTORICOS = ["terminado", "liquidado", "cerrado", "cedido", "terminado anormalmente"];
+// Estados previos a la ejecución, o que la abortaron antes de empezar. No mueven
+// dinero: un borrador no es plata en riesgo y un cancelado no es evidencia
+// histórica. Se clasifican SIEMPRE como 'otro' y quedan fuera de ambos modos, de
+// los agregados y del triaje. Va antes del fallback por fecha, que de lo
+// contrario los metía en 'vigente' por tener fecha_fin futura.
+const PRE_EJECUCION = ["borrador", "en aprobación", "en aprobacion", "cancelado"];
 
 function computeVigencia(estado: string | null, fechaFin: string | null): "vigente" | "historico" | "otro" {
   const e = (estado ?? "").trim().toLowerCase();
+  if (PRE_EJECUCION.includes(e)) return "otro";
   if (VIGENTES.includes(e)) return "vigente";
   if (HISTORICOS.includes(e)) return "historico";
+  // Solo para estado nulo o desconocido.
   if (fechaFin) return fechaFin >= TODAY ? "vigente" : "historico";
   return "otro";
+}
+
+/**
+ * Un billón COP. Para un corpus departamental, un contrato individual por encima
+ * de esa cifra es casi con certeza un error de reporte de la entidad.
+ */
+const VALOR_INVEROSIMIL_COP = 1e12;
+
+/**
+ * Marca valores imposibles SIN corregirlos ni ocultarlos: que una entidad
+ * reporte una cifra imposible es en sí un dato de transparencia. El contrato se
+ * conserva íntegro y se excluye de los agregados (METODOLOGIA §6.8).
+ */
+function esValorInverosimil(valor: number | null, pagado: number | null): boolean {
+  if (valor !== null && valor > VALOR_INVEROSIMIL_COP) return true;
+  if ((valor ?? 0) <= 0 && (pagado ?? 0) > 0) return true;
+  return false;
 }
 
 async function socrataGet(params: URLSearchParams): Promise<any> {
@@ -134,6 +159,8 @@ function mapRow(r: Record<string, unknown>) {
   const fechaFin = toDate(pick(r, [COL.fin, "fecha_fin_del_contrato"]));
   const idContrato = pick(r, ["id_contrato", "id_del_contrato"]);
   if (!idContrato) return null;
+  const valorContrato = toNum(pick(r, ["valor_del_contrato"]));
+  const valorPagado = toNum(pick(r, ["valor_pagado"]));
   return {
     id_contrato: String(idContrato),
     proceso_de_compra: pick(r, ["proceso_de_compra"]) as string | null,
@@ -147,8 +174,9 @@ function mapRow(r: Record<string, unknown>) {
     objeto: pick(r, ["objeto_del_contrato", "descripcion_del_proceso", "descripci_n_del_proceso"]) as string | null,
     estado_contrato: estado,
     vigencia: computeVigencia(estado, fechaFin),
-    valor_contrato: toNum(pick(r, ["valor_del_contrato"])),
-    valor_pagado: toNum(pick(r, ["valor_pagado"])),
+    valor_contrato: valorContrato,
+    valor_pagado: valorPagado,
+    valor_verificar: esValorInverosimil(valorContrato, valorPagado),
     valor_facturado: toNum(pick(r, ["valor_facturado"])),
     valor_pendiente_ejecucion: toNum(pick(r, ["valor_pendiente_de_ejecucion", "valor_pendiente_de_ejecuci_n"])),
     pago_adelantado: toBool(pick(r, ["habilita_pago_adelantado"])),
