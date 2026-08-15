@@ -2,14 +2,19 @@
  * Tipos compartidos de la Capa A (motor de reglas deterministas).
  *
  * Las reglas son funciones puras: reciben una fila de `contracts` y, cuando
- * necesitan mirar otros contratos, reciben ese contexto ya calculado como
- * parámetro. Ninguna regla consulta la base de datos por dentro — eso las hace
- * testeables sin red y auditables de un vistazo.
+ * necesitan mirar el corpus, reciben agregados YA CALCULADOS como parámetro.
+ * Ninguna regla consulta la base de datos por dentro — eso las hace testeables
+ * sin red y auditables de un vistazo (METODOLOGIA §6.1).
  */
+import type { Foco } from "../normativa/catalog";
 
 export type Severity = "critica" | "alta" | "media";
 export type FindingSource = "rules" | "llm" | "croma";
 export type Vigencia = "vigente" | "historico" | "otro";
+/** Según completitud de los datos que sustentan el hallazgo (METODOLOGIA §3). */
+export type Confianza = "alta" | "media" | "baja";
+
+export type { Foco };
 
 /** Fila de `contracts`, acotada a lo que las reglas leen. */
 export type ContractRow = {
@@ -36,17 +41,26 @@ export type ContractRow = {
   fecha_fin: string | null;
   documento_proveedor: string | null;
   proveedor: string | null;
+  url_proceso: string | null;
+  /** true = el valor reportado es inverosímil (METODOLOGIA §6.8). */
+  valor_verificar: boolean;
+  /** Fila cruda de SECOP. Las reglas la usan solo para campos no mapeados. */
+  raw: Record<string, unknown> | null;
 };
 
 /**
  * Hallazgo tal como se escribe en `findings`. El `unique (contract_id,
- * pattern_code, source)` de la tabla hace que re-correr el motor sea idempotente.
+ * pattern_code, source)` de la tabla hace idempotente re-correr el motor.
  */
 export type Finding = {
   contract_id: string;
   pattern_code: string;
   severity: Severity;
   points: number;
+  /** Completitud de los datos que lo sustentan (METODOLOGIA §3). */
+  confianza: Confianza;
+  /** A quién apunta la verificación. Sale del catálogo normativo. */
+  foco: Foco;
   /** Explicación en español, entendible por un ciudadano sin formación jurídica. */
   detail: string;
   /** Las cifras concretas que dispararon la regla. Nunca texto genérico. */
@@ -54,10 +68,19 @@ export type Finding = {
   source: FindingSource;
 };
 
+/** Estadísticos de un grupo de comparables, para VALOR_ATIPICO. */
+export type Comparables = {
+  /** `tipo_de_contrato|departamento`. */
+  clave: string;
+  n: number;
+  mediana: number;
+  p95: number;
+};
+
 /**
- * Contexto agregado que las reglas de conjunto necesitan. Se calcula una vez
- * por lote en el runner y se inyecta; así FRACCIONAMIENTO y
- * CONCENTRACION_PROVEEDOR siguen siendo funciones puras.
+ * Agregados de corpus que las reglas de conjunto necesitan. Se calculan una vez
+ * en el runner sobre el universo completo y se inyectan; así VALOR_ATIPICO,
+ * FRACCIONAMIENTO y CONCENTRACION_PROVEEDOR siguen siendo funciones puras.
  */
 export type RuleContext = {
   /**
@@ -65,14 +88,20 @@ export type RuleContext = {
    * `fecha_firma` ascendente. Incluye al contrato evaluado.
    */
   peersByEntitySupplier: Map<string, ContractRow[]>;
-  /** Fecha de referencia YYYY-MM-DD. Inyectable para que los tests sean deterministas. */
+  /** Estadísticos de valor por `tipo_de_contrato|departamento`. */
+  comparables: Map<string, Comparables>;
+  /** Valor total contratado por cada `nit_entidad` en los últimos 24 meses. */
+  valorPorEntidad24m: Map<string, number>;
+  /** Fecha de referencia YYYY-MM-DD. Inyectable para tests deterministas. */
   today: string;
+  /** Piso de materialidad en COP (METODOLOGIA §4). */
+  pisoMaterialidad: number;
 };
 
 /** Una regla determinista de la Capa A. */
 export type Rule = {
   code: string;
-  /** Devuelve el hallazgo, o null si el patrón no se cumple. */
+  /** Devuelve el hallazgo, o null si el patrón no se cumple o la regla se abstiene. */
   run(contract: ContractRow, ctx: RuleContext): Finding | null;
 };
 
@@ -80,4 +109,18 @@ export type Rule = {
 export function entitySupplierKey(c: ContractRow): string | null {
   if (!c.nit_entidad || !c.documento_proveedor) return null;
   return `${c.nit_entidad}|${c.documento_proveedor}`;
+}
+
+/** Clave de comparables usada por VALOR_ATIPICO. */
+export function comparablesKey(c: ContractRow): string | null {
+  if (!c.tipo_de_contrato || !c.departamento) return null;
+  return `${c.tipo_de_contrato}|${c.departamento}`;
+}
+
+/**
+ * Un contrato entra a los agregados y al triaje solo si su vigencia es real y
+ * su valor es creíble (METODOLOGIA §6.8 y §6.9).
+ */
+export function esComputable(c: ContractRow): boolean {
+  return c.vigencia !== "otro" && !c.valor_verificar;
 }

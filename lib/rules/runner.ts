@@ -1,40 +1,119 @@
 /**
- * Runner de la Capa A: construye el contexto agregado y aplica todas las reglas.
+ * Runner de la Capa A: precalcula los agregados de corpus y aplica las reglas.
  *
- * El contexto se calcula UNA vez sobre el universo completo de contratos, no
- * por lote. Es deliberado: FRACCIONAMIENTO y CONCENTRACION_PROVEEDOR cuentan
- * contratos hermanos, y si el agrupamiento solo viera el lote en curso, el
- * mismo contrato daría un conteo distinto según en qué lote le tocara caer.
- * Un contexto parcial no produce menos hallazgos: produce hallazgos falsos.
+ * Los agregados se calculan UNA vez sobre el universo completo, no por lote.
+ * Es deliberado: VALOR_ATIPICO compara contra el percentil de su grupo y
+ * FRACCIONAMIENTO / CONCENTRACION_PROVEEDOR cuentan contratos hermanos. Si el
+ * agregado solo viera el lote en curso, el mismo contrato daría un resultado
+ * distinto según en qué lote cayera. Un agregado parcial no produce menos
+ * hallazgos: produce hallazgos falsos.
+ *
+ * Los contratos no computables —`vigencia = 'otro'` o `valor_verificar`— quedan
+ * fuera de todos los agregados (METODOLOGIA §6.8 y §6.9).
  */
 import { RULES } from "./registry";
-import { entitySupplierKey } from "./types";
-import type { ContractRow, Finding, RuleContext } from "./types";
+import { THRESHOLDS, PISO_MATERIALIDAD_COP } from "./thresholds";
+import { comparablesKey, entitySupplierKey, esComputable } from "./types";
+import { daysBetween } from "./format";
+import type { Comparables, ContractRow, Finding, RuleContext } from "./types";
+
+/** Percentil por interpolación nearest-rank sobre una lista ya ordenada. */
+function percentil(ordenados: readonly number[], p: number): number {
+  if (!ordenados.length) return 0;
+  const rank = Math.ceil((p / 100) * ordenados.length);
+  return ordenados[Math.min(ordenados.length - 1, Math.max(0, rank - 1))];
+}
+
+function mediana(ordenados: readonly number[]): number {
+  if (!ordenados.length) return 0;
+  const mid = Math.floor(ordenados.length / 2);
+  return ordenados.length % 2 === 0
+    ? (ordenados[mid - 1] + ordenados[mid]) / 2
+    : ordenados[mid];
+}
 
 /**
- * Agrupa por entidad+proveedor y ordena cada grupo por `fecha_firma`.
- * Recibe el universo completo de contratos a evaluar.
+ * Estadísticos de valor por `tipo_de_contrato|departamento`, para VALOR_ATIPICO.
+ * Excluye valores no creíbles: uno solo desplazaría el percentil del grupo y
+ * haría que contratos caros parecieran normales.
  */
-export function buildContext(contracts: readonly ContractRow[], today: string): RuleContext {
-  const peersByEntitySupplier = new Map<string, ContractRow[]>();
+function buildComparables(contracts: readonly ContractRow[]): Map<string, Comparables> {
+  const valores = new Map<string, number[]>();
 
   for (const c of contracts) {
-    const key = entitySupplierKey(c);
-    if (!key) continue;
-    const grupo = peersByEntitySupplier.get(key);
-    if (grupo) grupo.push(c);
-    else peersByEntitySupplier.set(key, [c]);
+    if (!esComputable(c)) continue;
+    if (typeof c.valor_contrato !== "number" || c.valor_contrato <= 0) continue;
+    const clave = comparablesKey(c);
+    if (!clave) continue;
+    const arr = valores.get(clave);
+    if (arr) arr.push(c.valor_contrato);
+    else valores.set(clave, [c.valor_contrato]);
   }
 
-  for (const grupo of peersByEntitySupplier.values()) {
+  const out = new Map<string, Comparables>();
+  for (const [clave, arr] of valores) {
+    arr.sort((a, b) => a - b);
+    out.set(clave, {
+      clave,
+      n: arr.length,
+      mediana: mediana(arr),
+      p95: percentil(arr, THRESHOLDS.VALOR_ATIPICO.percentil),
+    });
+  }
+  return out;
+}
+
+/** Valor total contratado por cada entidad en la ventana de CONCENTRACION. */
+function buildValorPorEntidad(
+  contracts: readonly ContractRow[],
+  today: string,
+): Map<string, number> {
+  const ventana = THRESHOLDS.CONCENTRACION_PROVEEDOR.ventanaValorDias;
+  const out = new Map<string, number>();
+  for (const c of contracts) {
+    if (!esComputable(c)) continue;
+    if (!c.nit_entidad || typeof c.valor_contrato !== "number") continue;
+    const d = daysBetween(c.fecha_firma, today);
+    if (d === null || d < 0 || d > ventana) continue;
+    out.set(c.nit_entidad, (out.get(c.nit_entidad) ?? 0) + c.valor_contrato);
+  }
+  return out;
+}
+
+/** Agrupa por entidad+proveedor y ordena cada grupo por `fecha_firma`. */
+function buildPeers(contracts: readonly ContractRow[]): Map<string, ContractRow[]> {
+  const out = new Map<string, ContractRow[]>();
+  for (const c of contracts) {
+    if (!esComputable(c)) continue;
+    const key = entitySupplierKey(c);
+    if (!key) continue;
+    const grupo = out.get(key);
+    if (grupo) grupo.push(c);
+    else out.set(key, [c]);
+  }
+  for (const grupo of out.values()) {
     grupo.sort((a, b) => {
       const fa = a.fecha_firma ?? "";
       const fb = b.fecha_firma ?? "";
       return fa < fb ? -1 : fa > fb ? 1 : 0;
     });
   }
+  return out;
+}
 
-  return { peersByEntitySupplier, today };
+/** Construye el contexto completo. Recibe el universo, no un lote. */
+export function buildContext(
+  contracts: readonly ContractRow[],
+  today: string,
+  pisoMaterialidad: number = PISO_MATERIALIDAD_COP,
+): RuleContext {
+  return {
+    peersByEntitySupplier: buildPeers(contracts),
+    comparables: buildComparables(contracts),
+    valorPorEntidad24m: buildValorPorEntidad(contracts, today),
+    today,
+    pisoMaterialidad,
+  };
 }
 
 /** Aplica todas las reglas registradas a un contrato. */

@@ -6,7 +6,9 @@
  * a través de este barril.
  */
 export * from "./catalog";
+export * from "./finding";
 export * from "./format";
+export * from "./priority";
 export * from "./registry";
 export * from "./runner";
 export * from "./score";

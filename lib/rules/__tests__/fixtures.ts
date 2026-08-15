@@ -6,7 +6,8 @@
  * explícito qué es lo que hace saltar la regla.
  */
 import { buildContext } from "../runner";
-import type { ContractRow, RuleContext } from "../types";
+import { PISO_MATERIALIDAD_COP } from "../thresholds";
+import type { ContractRow, Finding, RuleContext } from "../types";
 
 let seq = 0;
 
@@ -37,16 +38,43 @@ export function contract(overrides: Partial<ContractRow> = {}): ContractRow {
     fecha_fin: "2025-12-31",
     documento_proveedor: "111111111",
     proveedor: "PROVEEDOR DE PRUEBA",
+    url_proceso: "https://community.secop.gov.co/Public/Tendering/prueba",
+    valor_verificar: false,
+    raw: {},
     ...overrides,
   };
 }
 
 /** Contexto con `today` fijo: los tests no pueden depender de la fecha real. */
-export function ctxOf(contracts: readonly ContractRow[], today = "2025-06-30"): RuleContext {
-  return buildContext(contracts, today);
+export function ctxOf(
+  contracts: readonly ContractRow[],
+  today = "2025-06-30",
+  piso: number = PISO_MATERIALIDAD_COP,
+): RuleContext {
+  return buildContext(contracts, today, piso);
 }
 
 /** Contexto de un solo contrato, para las reglas que no miran a sus pares. */
-export function soloCtx(c: ContractRow, today = "2025-06-30"): RuleContext {
-  return buildContext([c], today);
+export function soloCtx(
+  c: ContractRow,
+  today = "2025-06-30",
+  piso: number = PISO_MATERIALIDAD_COP,
+): RuleContext {
+  return buildContext([c], today, piso);
+}
+
+/** Hallazgo mínimo para tests de scoring y priorización. */
+export function finding(overrides: Partial<Finding> = {}): Finding {
+  return {
+    contract_id: "c1",
+    pattern_code: "DICIEMBRE",
+    severity: "media",
+    points: 10,
+    confianza: "alta",
+    foco: "entidad",
+    detail: "",
+    evidence: {},
+    source: "rules",
+    ...overrides,
+  };
 }
