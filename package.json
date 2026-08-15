@@ -10,7 +10,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "ingest": "tsx scripts/ingest.ts",
-    "apply-rules": "tsx scripts/apply-rules.ts"
+    "apply-rules": "tsx scripts/apply-rules.ts",
+    "enrich": "tsx scripts/enrich.ts",
+    "preview-expediente": "tsx scripts/preview-expediente.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.3",
