@@ -7,7 +7,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "ingest": "tsx scripts/ingest.ts"
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "ingest": "tsx scripts/ingest.ts",
+    "apply-rules": "tsx scripts/apply-rules.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.3",
@@ -25,7 +28,8 @@
     "eslint-config-next": "16.3.1",
     "tailwindcss": "^4",
     "tsx": "^4.23.12",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.10"
   },
   "packageManager": "pnpm@11.22.0"
 }
