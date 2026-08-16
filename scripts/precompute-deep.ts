@@ -175,7 +175,10 @@ async function main() {
             last_advance_at: ahora,
           },
         ],
-        { onConflict: "id_contrato_ref" },
+        // La tabla tiene único en contract_id y en id_contrato_ref. Se resuelve
+        // por el primero, que es la clave original: resolver por el segundo deja
+        // que el conflicto del primero reviente la escritura.
+        { onConflict: "contract_id" },
       );
       if (upErr) console.log(`  upsert ${c.id_contrato}: ${upErr.message}`);
       else hechos++;

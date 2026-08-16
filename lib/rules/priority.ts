@@ -42,21 +42,52 @@ const DIAS_POR_ANIO = 365.25;
  * cifras no sería defendible ante un auditor (METODOLOGIA §6.8).
  */
 export function plataEnRiesgo(c: ContractRow): number | null {
-  if (c.valor_verificar) return null;
-  if (c.vigencia === "otro") return null;
+  return detallePlataEnRiesgo(c).valor;
+}
+
+/**
+ * Plata en riesgo con su procedencia.
+ *
+ * La distinción importa y no es cosmética: en el corpus de Atlántico, 7.929
+ * contratos **en ejecución** reportan `valor_pagado = 0`. Eso casi nunca
+ * significa que no se haya desembolsado nada — significa que la entidad no
+ * reportó la ejecución. Decir "todo el contrato está en riesgo" en esos casos
+ * sería afirmar un hecho que el dato no sostiene (METODOLOGIA §6.1).
+ *
+ * Se sigue usando la cifra para priorizar, porque el desembolso tampoco está
+ * confirmado, pero queda marcada como no reportada para que la UI lo diga.
+ */
+export function detallePlataEnRiesgo(c: ContractRow): {
+  valor: number | null;
+  /** false = la entidad no reportó ejecución; la cifra es el valor del contrato. */
+  reportado: boolean;
+} {
+  if (c.valor_verificar) return { valor: null, reportado: false };
+  if (c.vigencia === "otro") return { valor: null, reportado: false };
 
   if (c.vigencia === "historico") {
-    return typeof c.valor_pagado === "number" && c.valor_pagado >= 0 ? c.valor_pagado : null;
+    const pagado = typeof c.valor_pagado === "number" && c.valor_pagado >= 0 ? c.valor_pagado : null;
+    return { valor: pagado, reportado: pagado !== null && pagado > 0 };
   }
 
-  if (typeof c.valor_pendiente_ejecucion === "number" && c.valor_pendiente_ejecucion > 0) {
-    return c.valor_pendiente_ejecucion;
+  const valor = typeof c.valor_contrato === "number" ? c.valor_contrato : null;
+  const pagado = typeof c.valor_pagado === "number" ? c.valor_pagado : null;
+  const pendiente =
+    typeof c.valor_pendiente_ejecucion === "number" ? c.valor_pendiente_ejecucion : null;
+
+  // Sin pagos y con el pendiente igual al valor total: la entidad no reportó
+  // ejecución. Se prioriza igual, pero no se afirma que nada se haya gastado.
+  const sinEjecucionReportada =
+    (pagado === null || pagado === 0) && (pendiente === null || pendiente === valor);
+
+  if (pendiente !== null && pendiente > 0) {
+    return { valor: pendiente, reportado: !sinEjecucionReportada };
   }
-  if (typeof c.valor_contrato === "number" && typeof c.valor_pagado === "number") {
-    const resto = c.valor_contrato - c.valor_pagado;
-    return resto > 0 ? resto : 0;
+  if (valor !== null && pagado !== null) {
+    const resto = valor - pagado;
+    return { valor: resto > 0 ? resto : 0, reportado: !sinEjecucionReportada };
   }
-  return null;
+  return { valor: null, reportado: false };
 }
 
 /**
@@ -107,9 +138,14 @@ function componerPorqueAhora(
   const razones: string[] = [];
 
   if (c.vigencia === "vigente" && plata !== null && plata > 0) {
+    const { reportado } = detallePlataEnRiesgo(c);
     razones.push(
-      `Quedan ${formatCOP(plata)} sin desembolsar: la intervención temprana ` +
-        `puede evitar que salgan.`,
+      reportado
+        ? `Quedan ${formatCOP(plata)} sin desembolsar según lo reportado: la intervención ` +
+          `temprana puede evitar que salgan.`
+        : `La entidad no ha reportado ejecución de este contrato de ${formatCOP(plata)}. ` +
+          `No consta cuánto se ha desembolsado, así que la cifra en riesgo es el valor total ` +
+          `hasta que la entidad reporte.`,
     );
   }
 

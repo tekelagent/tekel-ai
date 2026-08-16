@@ -156,6 +156,10 @@ data/spike-*.json
 data/spike-*.har
 data/secop-page.png
 data/pliegos/
+data/spike-stealth/
+# Perfiles de navegador del descubrimiento sigiloso: pesan y llevan cookies.
+data/perfil-chrome-*/
+data/documentos/
 
 # material de trabajo de v0 (no es codigo final)
 v0-design/

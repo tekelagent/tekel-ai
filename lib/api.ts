@@ -40,7 +40,26 @@ export function aContract(row: Record<string, unknown>): Contract {
     porque_ahora: Array.isArray(row.porque_ahora) ? (row.porque_ahora as string[]) : [],
     url_proceso: s(row.url_proceso),
     valor_verificar: Boolean(row.valor_verificar),
+    plata_reportada: plataFueReportada(row),
   };
+}
+
+/**
+ * ¿La cifra en riesgo viene de una ejecución reportada, o es el valor total
+ * porque la entidad no reportó nada? En el corpus de Atlántico, 7.929 contratos
+ * en ejecución declaran `valor_pagado = 0`: eso es dato ausente, no ejecución
+ * cero, y la interfaz tiene que distinguirlo.
+ */
+function plataFueReportada(row: Record<string, unknown>): boolean {
+  const vigencia = s(row.vigencia);
+  const pagado = row.valor_pagado === null ? null : n(row.valor_pagado);
+  if (vigencia === "historico") return pagado !== null && pagado > 0;
+
+  const valor = row.valor_contrato === null ? null : n(row.valor_contrato);
+  const pendiente =
+    row.valor_pendiente_ejecucion === null ? null : n(row.valor_pendiente_ejecucion);
+  const sinEjecucion = (pagado === null || pagado === 0) && (pendiente === null || pendiente === valor);
+  return !sinEjecucion;
 }
 
 /** Un hallazgo del expediente, con su norma ya resuelta desde el catálogo. */

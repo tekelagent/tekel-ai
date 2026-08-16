@@ -86,8 +86,19 @@ export async function GET(req: Request) {
       }
     }
 
-    const orden = ORDENES[p.get("orden") ?? "plata"] ?? ORDENES.plata;
-    q = q.order(orden.col, { ascending: orden.asc, nullsFirst: false }).range(offset, offset + limit - 1);
+    const clave = p.get("orden") ?? "prioridad";
+    if (clave === "prioridad") {
+      // Orden por defecto de la bandeja: P1 antes que P2 y P3, y dentro de cada
+      // grupo lo de mayor plata primero. Ordenar solo por plata pone arriba
+      // contratos enormes sin hallazgos, que no es lo que hay que revisar hoy.
+      q = q
+        .order("prioridad", { ascending: true, nullsFirst: false })
+        .order("plata_en_riesgo", { ascending: false, nullsFirst: false });
+    } else {
+      const orden = ORDENES[clave] ?? ORDENES.plata;
+      q = q.order(orden.col, { ascending: orden.asc, nullsFirst: false });
+    }
+    q = q.range(offset, offset + limit - 1);
 
     const { data, error, count } = await q;
     if (error) throw new Error(error.message);

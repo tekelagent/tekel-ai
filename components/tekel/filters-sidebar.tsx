@@ -33,6 +33,7 @@ const NIVELES: { key: string; label: string }[] = [
 ]
 
 const ORDENES: { key: Filters["orden"]; label: string }[] = [
+  { key: "prioridad", label: "Prioridad (P1 primero)" },
   { key: "plata", label: "Plata en riesgo" },
   { key: "score", label: "Score de riesgo" },
   { key: "fecha", label: "Fecha de firma" },
@@ -74,7 +75,7 @@ export function FiltersSidebar({ value, onChange, options }: FiltersSidebarProps
       modalidad: "",
       valor_min: null,
       patrones: [],
-      orden: "plata",
+      orden: "prioridad",
     })
   }
 

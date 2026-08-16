@@ -53,8 +53,11 @@ const INITIAL: Filters = {
   modalidad: "",
   valor_min: null,
   patrones: [],
-  orden: "plata",
+  orden: "prioridad",
 }
+
+/** P1 antes que P2, P2 antes que P3, sin triaje al final. */
+const RANGO_PRIORIDAD: Record<string, number> = { P1: 0, P2: 1, P3: 2 }
 
 function uniqueSorted(values: string[]) {
   return Array.from(new Set(values)).sort((a, b) => a.localeCompare(b, "es"))
@@ -102,6 +105,12 @@ export function DashboardView({ contracts, patronesByContract, metrics }: Dashbo
 
     const sorted = [...list].sort((a, b) => {
       switch (filters.orden) {
+        case "prioridad": {
+          const ra = RANGO_PRIORIDAD[a.prioridad ?? ""] ?? 9
+          const rb = RANGO_PRIORIDAD[b.prioridad ?? ""] ?? 9
+          if (ra !== rb) return ra - rb
+          return (b.plata_en_riesgo ?? 0) - (a.plata_en_riesgo ?? 0)
+        }
         case "plata":
           return (b.plata_en_riesgo ?? 0) - (a.plata_en_riesgo ?? 0)
         case "score":

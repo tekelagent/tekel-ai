@@ -1,0 +1,61 @@
+{
+  "visitas": [
+    {
+      "notice": "CO1.NTC.9048155",
+      "urlFinal": "https://community.secop.gov.co/Public/Common/GoogleReCaptcha/Index?previousUrl=https%3a%2f%2fcommunity.secop.gov.co%2fPublic%2fTendering%2fOpportunityDetail%2fIndex%3fnoticeUID%3dCO1.NTC.9048155%26isFromPublicArea%3dTrue%26isModal%3dFalse",
+      "hayMuro": true,
+      "badgeEnterprise": false,
+      "sitekey": "6LcMmakZAAAAAB157Q90hORUGtNd790TCws4vBNw",
+      "formAction": "/Public/Common/GoogleReCaptcha/Index",
+      "postUrl": null,
+      "cookies": [
+        {
+          "name": "PublicSessionCookie",
+          "domain": "community.secop.gov.co",
+          "expires": -1
+        },
+        {
+          "name": "ROUTEID",
+          "domain": "community.secop.gov.co",
+          "expires": -1
+        }
+      ]
+    },
+    {
+      "notice": "CO1.NTC.10051804",
+      "urlFinal": "https://community.secop.gov.co/Public/Common/GoogleReCaptcha/Index?previousUrl=https%3a%2f%2fcommunity.secop.gov.co%2fPublic%2fTendering%2fOpportunityDetail%2fIndex%3fnoticeUID%3dCO1.NTC.10051804%26isFromPublicArea%3dTrue%26isModal%3dFalse",
+      "hayMuro": true,
+      "badgeEnterprise": false,
+      "sitekey": "6LcMmakZAAAAAB157Q90hORUGtNd790TCws4vBNw",
+      "formAction": "/Public/Common/GoogleReCaptcha/Index",
+      "postUrl": null,
+      "cookies": [
+        {
+          "name": "PublicSessionCookie",
+          "domain": "community.secop.gov.co",
+          "expires": -1
+        },
+        {
+          "name": "ROUTEID",
+          "domain": "community.secop.gov.co",
+          "expires": -1
+        }
+      ]
+    }
+  ],
+  "scriptsRecaptcha": [
+    "https://www.google.com/recaptcha/api.js",
+    "https://www.gstatic.com/recaptcha/releases/XOqlk8PL_yVx6IdpLbpXdiLy/recaptcha__es_419.js",
+    "https://www.google.com/recaptcha/api2/webworker.js?hl=es-419"
+  ],
+  "endpointsCaptcha": [
+    "GET https://community.secop.gov.co/Public/Common/GoogleReCaptcha/Index?previousUrl=https%3a%2f%2fcommunity.secop.gov.co%2fPublic%2fTen",
+    "GET https://community.secop.gov.co/StaticContent/Scripts/jquery.validate.min.js_v639159924230000000",
+    "GET https://community.secop.gov.co/StaticContent/Translations/CommonLibrary/Common/GoogleReCaptcha/es-CO.json_v639222640931072095",
+    "GET https://www.google.com/recaptcha/api2/anchor?ar=1&k=6LcMmakZAAAAAB157Q90hORUGtNd790TCws4vBNw&co=aHR0cHM6Ly9jb21tdW5pdHkuc2Vjb3AuZ2",
+    "GET https://www.gstatic.com/recaptcha/releases/XOqlk8PL_yVx6IdpLbpXdiLy/styles__ltr.css",
+    "GET https://www.gstatic.com/recaptcha/api2/logo_48.png",
+    "GET https://www.gstatic.com/recaptcha/releases/XOqlk8PL_yVx6IdpLbpXdiLy/recaptcha__es_419.js",
+    "GET https://www.google.com/recaptcha/api2/bframe?hl=es-419&v=XOqlk8PL_yVx6IdpLbpXdiLy&k=6LcMmakZAAAAAB157Q90hORUGtNd790TCws4vBNw&bft=0"
+  ]
+}

@@ -30,7 +30,13 @@ export function FactsPanel({ c }: { c: Contract }) {
           <span className="num font-semibold">{formatCOP(c.valor_contrato)}</span>
         </Row>
         {c.plata_en_riesgo != null && (
-          <Row label="Plata en riesgo estimada">
+          <Row
+          label={
+            c.plata_reportada
+              ? "Plata en riesgo estimada"
+              : "Valor total · la entidad no reportó ejecución"
+          }
+        >
             <span className="num font-semibold text-crit">{formatCOP(c.plata_en_riesgo)}</span>
           </Row>
         )}

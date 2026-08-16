@@ -27,6 +27,12 @@ export const AVISO_VALOR_INVEROSIMIL =
 
 export type HallazgoExpediente = {
   pattern_code: string;
+  /** Puntos que este hallazgo aporta al score. Sin esto la UI no puede
+   *  explicar de dónde sale el número, que es justo lo que lo hace auditable. */
+  points: number;
+  severity: string;
+  /** Qué capa lo produjo: regla determinista, registro oficial o IA. */
+  source: string;
   /** Qué muestran los datos, en cifras exactas y español claro. */
   condicion: string;
   /** Norma del catálogo. Nunca texto generado. */
@@ -152,6 +158,9 @@ export function construirExpediente(
     const criterio = criterioDe(code);
     return {
       pattern_code: f.pattern_code,
+      points: f.points,
+      severity: f.severity,
+      source: f.source,
       condicion: f.detail,
       criterio: criterio
         ? {

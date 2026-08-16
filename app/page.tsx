@@ -23,7 +23,9 @@ export default function DashboardPage() {
   const cargar = useCallback(async () => {
     try {
       const [c, m] = await Promise.all([
-        traerContratos({ limit: 120, orden: "plata" }),
+        // Por prioridad: la bandeja abre con los P1, que es lo que un equipo
+        // de control debería mirar hoy.
+        traerContratos({ limit: 150, orden: "prioridad" }),
         traerMetricas(),
       ]);
       if (!vivo.current) return;

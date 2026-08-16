@@ -68,9 +68,12 @@ export function ContractHeader({
       <div className="mt-6 grid grid-cols-2 gap-x-6 gap-y-4 border-t border-hairline pt-5 sm:grid-cols-3 lg:grid-cols-4">
         <DataItem label="Valor del contrato" value={formatCOP(c.valor_contrato)} />
         <DataItem
-          label="Plata en riesgo"
+          // Cuando la entidad no reportó ejecución, la cifra es el valor total
+          // del contrato, no un pendiente confirmado. Decirlo evita afirmar un
+          // hecho que el dato no sostiene.
+          label={c.plata_reportada ? "Plata en riesgo" : "Valor sin ejecución reportada"}
           value={c.plata_en_riesgo != null ? formatCOP(c.plata_en_riesgo) : "—"}
-          tone={c.plata_en_riesgo != null ? "crit" : undefined}
+          tone={c.plata_en_riesgo != null && c.plata_reportada ? "crit" : undefined}
         />
         <DataItem label="Estado" value={c.estado_contrato} />
         <DataItem label="Modalidad" value={c.modalidad} />

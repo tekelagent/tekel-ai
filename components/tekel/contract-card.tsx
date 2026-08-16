@@ -17,7 +17,14 @@ export function ContractCard({ contract: c, modo, patrones = [] }: ContractCardP
   const tone = priorityTone(c.prioridad)
   const color = riskColor(c.risk_level)
   const primaryReason = c.porque_ahora[0]
-  const riesgoLabel = modo === "historico" ? "Pagado bajo revisión" : "Plata en riesgo"
+  // Si la entidad no reportó ejecución, la cifra es el valor total del
+  // contrato, no un pendiente confirmado. La etiqueta lo dice.
+  const riesgoLabel =
+    modo === "historico"
+      ? "Pagado bajo revisión"
+      : c.plata_reportada
+        ? "Plata en riesgo"
+        : "Sin ejecución reportada"
 
   return (
     <Link

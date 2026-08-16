@@ -19,6 +19,12 @@ export type Contract = {
   porque_ahora: string[]
   url_proceso: string
   valor_verificar: boolean
+  /**
+   * false = la entidad no reportó ejecución, así que `plata_en_riesgo` es el
+   * valor total del contrato y no una cifra pendiente confirmada. La UI debe
+   * decirlo: afirmar "todo está en riesgo" sin ese dato sería inventar.
+   */
+  plata_reportada: boolean
 }
 
 export type Finding = {
@@ -88,5 +94,5 @@ export type Filters = {
   modalidad: string
   valor_min: number | null
   patrones: string[]
-  orden: "plata" | "score" | "fecha" | "valor"
+  orden: "prioridad" | "plata" | "score" | "fecha" | "valor"
 }
