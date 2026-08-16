@@ -150,3 +150,9 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+
+# Spike de SECOP II: HAR y capturas del navegador
+data/spike-*.json
+data/spike-*.har
+data/secop-page.png
+data/pliegos/

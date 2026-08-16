@@ -212,6 +212,38 @@ efecto). Deliberadamente NO se afirma "causa": eso es del investigador.
   Legalize en Capa C; el catálogo estático puede desactualizarse y por eso se
   versiona.
 
+### SECOP II no expone los adjuntos de forma programática
+
+Los documentos de un proceso (pliego, estudios previos, anexos técnicos) **no son
+descubribles automáticamente**. Se verificaron las tres rutas posibles:
+
+1. **HTML de `url_proceso`**: devuelve el shell de una SPA. Tres procesos distintos
+   entregan exactamente los mismos 20.927 bytes, sin un solo enlace a documentos.
+2. **Extracción vía Croma** (`/global/extract/json/v1`): `502 content_upstream`.
+   Choca con la misma SPA.
+3. **Navegador automatizado** (Playwright, Chromium completo, recursos bloqueados):
+   la página responde con título `ReCaptcha` y el texto *"Por favor, complete la
+   validación para acceder a la página"*. De toda la sesión se captura **una sola
+   petición XHR: el archivo de traducciones del propio reCAPTCHA**. El contenido
+   del proceso nunca se renderiza.
+
+SECOP II protege esas páginas con Google reCAPTCHA. **Tekel no intenta resolverlo
+ni evadirlo**: es un control de acceso que el titular del sitio puso
+deliberadamente, y sortearlo a escala sería precisamente lo que ese control busca
+impedir.
+
+Lo que sí funciona, y sobre lo que se construye:
+
+- **La descarga por identificador es pública y directa.** Con un `DocumentId`
+  conocido, `community.secop.gov.co/Public/Archive/RetrieveFile/Index?DocumentId=…`
+  entrega el PDF con un GET sin sesión (verificado: 632 KB, `%PDF-1.7`). El cuello
+  de botella es descubrir el identificador, no obtener el archivo.
+- **Por eso `needs_upload` es un estado de primera clase del motor, no un
+  fallback.** Cuando no hay documento descubierto, el análisis se detiene en ese
+  estado, el usuario aporta el PDF —que es público y él sí puede descargar— y el
+  flujo se reanuda solo desde el paso de análisis. La cadena completa
+  (forense → documentos → pliego → expediente) queda intacta.
+
 ### Fuentes disponibles que NO se usan, y por qué
 
 - **Sanciones penales FGN (PACO).** Descargable, no cargado. El archivo no trae

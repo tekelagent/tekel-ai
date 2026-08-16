@@ -25,8 +25,12 @@ const { values: args } = parseArgs({
     headed: { type: "boolean", default: false },
     timeout: { type: "string", default: "90000" },
     out: { type: "string", default: "data/spike-xhr.json" },
+    har: { type: "string", default: "data/spike-secop.har" },
   },
 });
+
+const UA =
+  "TekelAgent/0.1 (auditoria de contratacion publica; +https://github.com/tekelagent/tekel-ai)";
 
 const NOTICE = args.notice;
 const TIMEOUT = Number(args.timeout) || 90_000;
@@ -52,11 +56,15 @@ async function main() {
   console.log(`notice: ${NOTICE}`);
   console.log(`url:    ${URL_PROCESO}\n${"═".repeat(74)}`);
 
-  const browser = await chromium.launch({ headless: !args.headed });
+  // channel: "chromium" usa el navegador completo. Sin esto Playwright busca
+  // chrome-headless-shell, que es una descarga aparte.
+  const browser = await chromium.launch({ headless: !args.headed, channel: "chromium" });
   const ctx = await browser.newContext({
-    userAgent:
-      "TekelAgent/0.1 (auditoria de contratacion publica; +https://github.com/tekelagent/tekel-ai)",
+    userAgent: UA,
     viewport: { width: 1400, height: 900 },
+    // HAR completo: si el endpoint resulta enredado, se reanaliza sin volver a
+    // levantar el navegador.
+    recordHar: { path: args.har, content: "embed" },
   });
   const page = await ctx.newPage();
 
@@ -129,6 +137,11 @@ async function main() {
   const html = await page.content().catch(() => "");
   const idsEnHtml = [...new Set([...html.matchAll(/DocumentId=([A-Za-z0-9._-]+)/gi)].map((m) => m[1]))];
 
+  // Cookies de la sesión del navegador, para la segunda prueba de replicabilidad.
+  const cookies = await ctx.cookies();
+  const cookieHeader = cookies.map((c) => `${c.name}=${c.value}`).join("; ");
+
+  await ctx.close(); // cierra y escribe el HAR
   await browser.close();
 
   console.log(`\nXHR/fetch capturados: ${capturas.length}`);
@@ -158,8 +171,78 @@ async function main() {
     console.log(`  muestra: ${c.muestra.slice(0, 700)}`);
   }
 
-  writeFileSync(args.out, JSON.stringify({ notice: NOTICE, idsEnHtml, capturas }, null, 2));
-  console.log(`\nDetalle completo en ${args.out}`);
+  // ── Prueba de replicabilidad (decide la rama del árbol S9) ──────────────
+  console.log(`\n${"═".repeat(74)}\nREPLICABILIDAD CON FETCH PURO`);
+  const veredictos: Array<Record<string, unknown>> = [];
+
+  for (const c of conDocs) {
+    console.log(`\n▸ ${c.metodo} ${c.url.slice(0, 100)}`);
+
+    const cabecerasBase: Record<string, string> = {
+      "User-Agent": UA,
+      Accept: c.requestHeaders["accept"] ?? "application/json, text/plain, */*",
+    };
+    if (c.requestHeaders["content-type"]) {
+      cabecerasBase["Content-Type"] = c.requestHeaders["content-type"];
+    }
+    // Cabeceras que la SPA suele exigir y que no son sesión.
+    for (const k of ["x-requested-with", "referer", "origin"]) {
+      if (c.requestHeaders[k]) cabecerasBase[k] = c.requestHeaders[k];
+    }
+
+    async function probar(etiqueta: string, headers: Record<string, string>) {
+      try {
+        const res = await fetch(c.url, {
+          method: c.metodo,
+          headers,
+          body: c.postData ?? undefined,
+        });
+        const txt = await res.text();
+        const sirve = res.ok && PISTA_DOCS.test(txt);
+        console.log(
+          `    ${etiqueta.padEnd(18)} HTTP ${res.status} · ${txt.length}b · ${sirve ? "TRAE DOCUMENTOS" : "no sirve"}`,
+        );
+        return { etiqueta, status: res.status, bytes: txt.length, sirve };
+      } catch (err) {
+        console.log(`    ${etiqueta.padEnd(18)} error: ${(err as Error).message.slice(0, 80)}`);
+        return { etiqueta, status: 0, bytes: 0, sirve: false };
+      }
+    }
+
+    const sinCookies = await probar("sin cookies", cabecerasBase);
+    const conCookies = await probar("con cookies", { ...cabecerasBase, Cookie: cookieHeader });
+    veredictos.push({ url: c.url, metodo: c.metodo, sinCookies, conCookies });
+  }
+
+  // ── Veredicto S9 ────────────────────────────────────────────────────────
+  console.log(`\n${"═".repeat(74)}\nVEREDICTO`);
+  const funcionaSinCookies = veredictos.some((v) => (v.sinCookies as any)?.sirve);
+  const funcionaConCookies = veredictos.some((v) => (v.conCookies as any)?.sirve);
+
+  let rama: "a" | "a-prima" | "b" | "c";
+  if (funcionaSinCookies) {
+    rama = "a";
+    console.log(`  RAMA (a): el XHR es replicable con fetch puro, sin sesión.`);
+    console.log(`  → descubrimiento EN VIVO en el motor + batch del corpus por HTTP.`);
+  } else if (funcionaConCookies) {
+    rama = "a-prima";
+    console.log(`  RAMA (a'): el XHR exige cookie de sesión obtenible con un GET previo.`);
+    console.log(`  → discover = GET del shell (captura cookies) + XHR. Dos requests, cero navegadores.`);
+  } else if (conDocs.length > 0 || idsEnHtml.length > 0) {
+    rama = "b";
+    console.log(`  RAMA (b): el navegador ve los documentos pero el XHR no es replicable.`);
+    console.log(`  → Playwright local para P1+P2; el batch del corpus completo queda documentado sin correr.`);
+  } else {
+    rama = "c";
+    console.log(`  RAMA (c): ni con navegador aparecen los adjuntos en esta página.`);
+    console.log(`  → needs_upload ES el diseño. Se declara en METODOLOGIA §7.`);
+  }
+
+  writeFileSync(
+    args.out,
+    JSON.stringify({ notice: NOTICE, rama, idsEnHtml, veredictos, capturas }, null, 2),
+  );
+  console.log(`\nDetalle en ${args.out} · HAR en ${args.har}`);
 }
 
 main().catch((err) => {

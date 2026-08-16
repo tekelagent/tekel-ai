@@ -17,7 +17,8 @@
                     "load-paco":  "tsx scripts/load-paco.ts",
                     "ingest-processes":  "tsx scripts/ingest-processes.ts",
                     "probe-docs":  "tsx scripts/probe-docs.ts",
-                    "bakeoff-pliego":  "tsx scripts/bakeoff-pliego.ts"
+                    "bakeoff-pliego":  "tsx scripts/bakeoff-pliego.ts",
+                    "spike-secop-xhr":  "tsx scripts/spike-secop-xhr.ts"
                 },
     "dependencies":  {
                          "@supabase/supabase-js":  "^2.112.3",
