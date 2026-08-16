@@ -34,6 +34,7 @@ const { values: args } = parseArgs({
     "dry-run": { type: "boolean", default: false },
     model: { type: "string" },
     "max-cost": { type: "string", default: "5" },
+    priorizados: { type: "boolean", default: false },
   },
 });
 
@@ -119,7 +120,9 @@ async function loadPendientes(): Promise<Pendiente[]> {
   const todos: Pendiente[] = [];
   for (let offset = 0; todos.length < LIMIT; offset += PAGE) {
     const cuantos = Math.min(PAGE, LIMIT === Infinity ? PAGE : LIMIT - todos.length);
-    const { data, error } = await supabase
+    // Sin reasignar el builder: reasignarlo hace que TypeScript anide el tipo
+    // de PostgrestFilterBuilder hasta reventar (TS2589).
+    const base = supabase
       .from("contracts")
       .select(
         "id,id_contrato,nombre_entidad,objeto,tipo_de_contrato,modalidad,valor_contrato,fecha_firma,fecha_inicio,fecha_fin,proveedor,vigencia",
@@ -127,6 +130,9 @@ async function loadPendientes(): Promise<Pendiente[]> {
       .is("enriched_at", null)
       .order("risk_score", { ascending: false, nullsFirst: false })
       .range(offset, offset + cuantos - 1);
+    // Con --priorizados solo se enriquece lo que entró al triaje: gastar el
+    // LLM en los 17.000 contratos sin prioridad no cambia ninguna decisión.
+    const { data, error } = args.priorizados ? await base.not("prioridad", "is", null) : await base;
     if (error) throw new Error(`Supabase select: ${error.message}`);
     if (!data || data.length === 0) break;
     todos.push(...(data as unknown as Pendiente[]));

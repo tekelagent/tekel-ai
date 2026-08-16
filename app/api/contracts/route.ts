@@ -92,7 +92,32 @@ export async function GET(req: Request) {
     const { data, error, count } = await q;
     if (error) throw new Error(error.message);
 
-    return NextResponse.json({ total: count ?? 0, contratos: data ?? [], limit, offset });
+    // Patrones por contrato: la UI los pinta como chips y filtra por ellos sin
+    // volver al servidor. Se piden solo para los contratos de esta página.
+    const ids = (data ?? []).map((c) => (c as unknown as Record<string, unknown>).id as string);
+    const patronesPorContrato: Record<string, string[]> = {};
+    if (ids.length) {
+      const { data: fs } = await supabaseServer()
+        .from("findings")
+        .select("contract_id,pattern_code")
+        .in("contract_id", ids.slice(0, 100));
+      const porId: Record<string, string[]> = {};
+      for (const f of (fs ?? []) as Array<{ contract_id: string; pattern_code: string }>) {
+        (porId[f.contract_id] ??= []).push(f.pattern_code);
+      }
+      for (const c of data ?? []) {
+        const row = c as unknown as Record<string, unknown>;
+        patronesPorContrato[row.id_contrato as string] = porId[row.id as string] ?? [];
+      }
+    }
+
+    return NextResponse.json({
+      total: count ?? 0,
+      contratos: data ?? [],
+      patrones: patronesPorContrato,
+      limit,
+      offset,
+    });
   } catch (err) {
     return NextResponse.json({ error: (err as Error).message }, { status: 500 });
   }
