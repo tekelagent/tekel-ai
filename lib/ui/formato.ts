@@ -17,24 +17,68 @@ export function fecha(s: string | null | undefined): string {
   return `${d}/${m}/${a}`;
 }
 
-/** Colores por prioridad. P1 es lo que hay que mirar hoy. */
-export const COLOR_PRIORIDAD: Record<string, string> = {
-  P1: "bg-rose-500/15 text-rose-300 ring-rose-500/30",
-  P2: "bg-amber-500/15 text-amber-300 ring-amber-500/30",
-  P3: "bg-sky-500/15 text-sky-300 ring-sky-500/30",
-};
+/** Color del semáforo de riesgo, como variable CSS del sistema de diseño. */
+export function colorRiesgo(nivel: string | null | undefined): string {
+  if (nivel === "critico") return "var(--crit)";
+  if (nivel === "medio") return "var(--warn)";
+  return "var(--p3)";
+}
 
-export const COLOR_NIVEL: Record<string, string> = {
-  critico: "bg-rose-500/15 text-rose-300 ring-rose-500/30",
-  medio: "bg-amber-500/15 text-amber-300 ring-amber-500/30",
-  bajo: "bg-slate-500/15 text-slate-400 ring-slate-500/30",
-};
+/** Clases de la píldora de prioridad. */
+export function tonoPrioridad(p: string | null | undefined): { bg: string; text: string } {
+  if (p === "P1") return { bg: "bg-crit-soft", text: "text-crit" };
+  if (p === "P2") return { bg: "bg-warn-soft", text: "text-warn" };
+  if (p === "P3") return { bg: "bg-muted", text: "text-p3" };
+  return { bg: "bg-muted", text: "text-muted-foreground" };
+}
 
 export const ETIQUETA_PRIORIDAD: Record<string, string> = {
   P1: "P1 · Revisar de inmediato",
   P2: "P2 · Esta semana",
   P3: "P3 · Monitoreo",
 };
+
+/** Colores de confianza del hallazgo. */
+export const COLOR_CONFIANZA: Record<string, string> = {
+  alta: "bg-ok-soft text-ok",
+  media: "bg-warn-soft text-warn",
+  baja: "bg-muted text-muted-foreground",
+};
+
+/**
+ * Origen del hallazgo, para que el usuario sepa qué lo produjo.
+ * Es una distinción sustantiva: una regla determinista es reproducible, un
+ * registro oficial es verificable en la fuente, y una salida de IA merece más
+ * escrutinio que ninguna de las dos.
+ */
+export const ETIQUETA_FUENTE: Record<string, { texto: string; clase: string }> = {
+  rules: { texto: "Regla verificable", clase: "bg-ok-soft text-ok" },
+  croma: { texto: "Registro oficial", clase: "bg-brand-soft text-accent-foreground" },
+  llm: { texto: "Análisis con IA", clase: "bg-warn-soft text-warn" },
+};
+
+/** Patrones que provienen de cruces con registros oficiales (PACO / Croma). */
+const PATRONES_REGISTRO = new Set([
+  "INHABILIDAD_REP_LEGAL",
+  "SANCIONES_PREVIAS",
+  "COLUSION_PREVIA",
+  "ANTECEDENTE_OBRA_INCONCLUSA",
+  "OBRA_INCONCLUSA",
+  "MOROSO_BDME",
+  "PROVEEDOR_RECIENTE",
+  "OBJETO_CIIU_INCOHERENTE",
+]);
+
+/**
+ * La fuente que ve el usuario no siempre es la columna `source`: los cruces
+ * contra PACO se escriben como `rules` porque los ejecuta el motor determinista,
+ * pero para quien lee son registros oficiales, no una heurística nuestra.
+ */
+export function fuenteDeHallazgo(source: string, patternCode: string) {
+  if (source === "llm") return ETIQUETA_FUENTE.llm;
+  if (source === "croma" || PATRONES_REGISTRO.has(patternCode)) return ETIQUETA_FUENTE.croma;
+  return ETIQUETA_FUENTE.rules;
+}
 
 /** Los 21 patrones, para el filtro. */
 export const PATRONES = [

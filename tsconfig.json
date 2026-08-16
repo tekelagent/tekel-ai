@@ -30,5 +30,13 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules"]
+  "exclude": [
+    "node_modules",
+    "scripts/_*.mts",
+    // Componentes de referencia de v0. No son parte de la app: se trasplantan
+    // pieza por pieza a app/components. Sus dependencias (lucide-react,
+    // class-variance-authority, base-ui) no están instaladas, así que
+    // incluirlos en el typecheck rompe el build de producción.
+    "v0-design"
+  ]
 }

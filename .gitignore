@@ -156,3 +156,7 @@ data/spike-*.json
 data/spike-*.har
 data/secop-page.png
 data/pliegos/
+
+# material de trabajo de v0 (no es codigo final)
+v0-design/
+.env*

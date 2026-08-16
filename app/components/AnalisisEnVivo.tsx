@@ -110,9 +110,7 @@ export function AnalisisEnVivo({
     return (
       <button
         onClick={iniciar}
-        className="w-full rounded-lg bg-sky-600 px-4 py-2.5 text-sm font-semibold text-white
-                   transition hover:bg-sky-500 focus:outline-none focus-visible:ring-2
-                   focus-visible:ring-sky-400"
+        className="w-full bg-brand-gradient rounded-lg px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         Análisis profundo
       </button>
@@ -125,10 +123,10 @@ export function AnalisisEnVivo({
         <div className="flex items-center gap-2 text-xs">
           <span
             className={`inline-block h-2 w-2 rounded-full ${
-              corriendo ? "animate-pulse bg-sky-400" : estado.terminado ? "bg-emerald-400" : "bg-amber-400"
+              corriendo ? "animate-pulse bg-primary" : estado.terminado ? "bg-ok" : "bg-warn"
             }`}
           />
-          <span className="text-slate-300">
+          <span className="text-foreground/85">
             {corriendo
               ? (ETIQUETA_PASO[estado.stage ?? ""] ?? "Procesando") + "…"
               : estado.status === "needs_upload"
@@ -138,19 +136,22 @@ export function AnalisisEnVivo({
                   : estado.status}
           </span>
           {estado.cost_usd > 0 && (
-            <span className="ml-auto font-mono text-slate-500">
+            <span className="ml-auto font-mono text-muted-foreground">
               ${estado.cost_usd.toFixed(4)} USD
             </span>
           )}
         </div>
       )}
 
-      <div className="max-h-72 overflow-y-auto rounded-lg border border-slate-800 bg-slate-950/60 p-3">
+      {/* Consola sobre fondo oscuro a propósito: es un log, y así se lee como
+          lo que es. Los colores van explícitos porque aquí los tokens del tema
+          claro darían texto oscuro sobre oscuro. */}
+      <div className="max-h-72 overflow-y-auto rounded-xl border border-hairline bg-[#0f172a] p-3">
         <div className="space-y-1 font-mono text-[11px] leading-relaxed">
           {(estado?.log ?? []).map((l, i) => (
-            <div key={i} className="flex gap-2">
-              <span className="shrink-0 text-slate-600">{l.ts.slice(11, 19)}</span>
-              <span className="text-slate-300">{l.msg}</span>
+            <div key={i} className="log-line-in flex gap-2">
+              <span className="shrink-0 text-slate-500">{l.ts.slice(11, 19)}</span>
+              <span className="text-slate-200">{l.msg}</span>
             </div>
           ))}
           <div ref={finRef} />
@@ -162,7 +163,7 @@ export function AnalisisEnVivo({
       )}
 
       {error && (
-        <p className="rounded-lg border border-rose-800 bg-rose-950/40 p-3 text-xs text-rose-300">
+        <p className="rounded-lg border border-crit/30 bg-crit-soft p-3 text-xs text-crit">
           {error}
         </p>
       )}
@@ -195,7 +196,7 @@ function Dropzone({
       }}
       onClick={() => input.current?.click()}
       className={`cursor-pointer rounded-lg border-2 border-dashed p-6 text-center transition ${
-        sobre ? "border-sky-500 bg-sky-500/10" : "border-slate-700 bg-slate-900/40 hover:border-slate-600"
+        sobre ? "border-primary bg-accent" : "border-input bg-muted/40 hover:border-primary/60"
       }`}
     >
       <input
@@ -209,14 +210,14 @@ function Dropzone({
         }}
       />
       {subiendo ? (
-        <p className="text-sm text-slate-300">Subiendo y leyendo el documento…</p>
+        <p className="text-sm text-foreground/85">Subiendo y leyendo el documento…</p>
       ) : (
         <>
-          <p className="text-sm font-medium text-slate-200">Arrastra el pliego en PDF</p>
-          <p className="mt-1 text-xs text-slate-500">
+          <p className="text-sm font-medium text-foreground">Arrastra el pliego en PDF</p>
+          <p className="mt-1 text-xs text-muted-foreground">
             SECOP no permite descargarlo automáticamente. Súbelo y el análisis sigue solo.
           </p>
-          <p className="mt-1 text-[11px] text-slate-600">Máx. 25 MB · 80 páginas</p>
+          <p className="mt-1 text-[11px] text-muted-foreground/70">Máx. 25 MB · 80 páginas</p>
         </>
       )}
     </div>

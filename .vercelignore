@@ -1,0 +1,27 @@
+# Nada de esto corre en Vercel: los scripts batch se ejecutan desde terminal
+# local o CI, y los datos crudos pesan decenas de MB que solo hacen lento el
+# despliegue y más frágil la subida.
+#
+# OJO: los patrones van anclados con "/" inicial. Sin anclar, "supabase/"
+# también excluye "lib/supabase/", que SÍ es código de la aplicación —
+# exactamente el error que tumbó el primer build.
+
+# Snapshots de PACO y PDFs descargados
+/data/
+
+# Componentes de referencia de v0: se trasplantan a mano, no se despliegan
+/v0-design/
+
+# Scripts batch y de sondeo
+/scripts/
+
+# Migraciones y configuración del CLI de Supabase (no lib/supabase)
+/supabase/
+
+# Documentación
+/docs/
+/CLAUDE.md
+/AGENTS.md
+
+# Tests
+**/__tests__/

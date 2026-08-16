@@ -2,9 +2,18 @@
 
 import { use, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { ArrowLeft, ExternalLink, Scale } from "lucide-react";
 import { AnalisisEnVivo } from "@/app/components/AnalisisEnVivo";
 import { Hallazgo, type HallazgoUI } from "@/app/components/Hallazgo";
-import { AVISO_LEGAL, COLOR_PRIORIDAD, ETIQUETA_PRIORIDAD, cop, fecha } from "@/lib/ui/formato";
+import { ScoreRing } from "@/app/components/ScoreRing";
+import {
+  AVISO_LEGAL,
+  ETIQUETA_PRIORIDAD,
+  colorRiesgo,
+  cop,
+  fecha,
+  tonoPrioridad,
+} from "@/lib/ui/formato";
 
 type Respuesta = {
   expediente: {
@@ -19,7 +28,6 @@ type Respuesta = {
     hallazgos: HallazgoUI[];
     lineas_de_verificacion: string[];
     trazabilidad: Record<string, string>;
-    aviso: string;
   };
   contrato: Record<string, any>;
   capa_c: {
@@ -54,7 +62,7 @@ export default function DetalleContrato({ params }: { params: Promise<{ id: stri
   if (error) {
     return (
       <Marco>
-        <p className="rounded-lg border border-rose-800 bg-rose-950/40 p-4 text-sm text-rose-300">
+        <p className="rounded-xl border border-crit/30 bg-crit-soft p-4 text-sm text-crit">
           {error}
         </p>
       </Marco>
@@ -63,7 +71,7 @@ export default function DetalleContrato({ params }: { params: Promise<{ id: stri
   if (!datos) {
     return (
       <Marco>
-        <p className="py-16 text-center text-sm text-slate-500">Cargando expediente…</p>
+        <p className="py-16 text-center text-sm text-muted-foreground">Cargando expediente…</p>
       </Marco>
     );
   }
@@ -72,46 +80,41 @@ export default function DetalleContrato({ params }: { params: Promise<{ id: stri
   const h = e.encabezado;
   const t = e.triaje;
   const forense = capa_c?.forensic;
+  const tono = tonoPrioridad(t.prioridad);
+  const color = colorRiesgo(t.risk_level);
 
   return (
     <Marco>
       {/* ── Encabezado ────────────────────────────────────────────── */}
-      <section className="rounded-xl border border-slate-800 bg-slate-900/40 p-5">
+      <section className="card-soft p-6">
         <div className="mb-3 flex flex-wrap items-center gap-2">
           {t.prioridad && (
-            <span
-              className={`rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${
-                COLOR_PRIORIDAD[t.prioridad] ?? ""
-              }`}
-            >
+            <span className={`badge-pill font-semibold ${tono.text} ${tono.bg}`}>
               {ETIQUETA_PRIORIDAD[t.prioridad] ?? t.prioridad}
             </span>
           )}
-          <span className="font-mono text-[11px] text-slate-500">{h.id_contrato}</span>
+          <span className="num font-mono text-[11px] text-muted-foreground">{h.id_contrato}</span>
           {h.avisos?.map((a: string) => (
-            <span
-              key={a}
-              className="rounded-full bg-orange-500/15 px-2 py-0.5 text-[11px] text-orange-300 ring-1 ring-inset ring-orange-500/30"
-            >
+            <span key={a} className="badge-pill bg-warn-soft text-warn">
               {a}
             </span>
           ))}
         </div>
 
-        <h1 className="text-lg font-bold leading-snug text-slate-100">{h.entidad}</h1>
-        <p className="mt-1 text-sm text-slate-400">
-          Contratista: <span className="text-slate-300">{h.contratista}</span>
+        <h1 className="text-xl font-bold leading-snug text-foreground">{h.entidad}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Contratista: <span className="text-foreground">{h.contratista}</span>
           {h.documento_proveedor ? ` · doc. ${h.documento_proveedor}` : ""}
         </p>
 
-        <p className="mt-3 text-xs leading-relaxed text-slate-400">{h.objeto}</p>
+        <p className="mt-3 text-sm leading-relaxed text-foreground/85">{h.objeto}</p>
 
-        <dl className="mt-4 grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4">
+        <dl className="mt-5 grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-4">
           <Dato etiqueta="Valor" valor={cop(h.valor_contrato, false)} />
           <Dato
             etiqueta={h.vigencia === "vigente" ? "Sin desembolsar" : "Ya pagado"}
             valor={cop(t.plata_en_riesgo, false)}
-            acento
+            color={color}
           />
           <Dato etiqueta="Estado" valor={h.estado ?? "—"} />
           <Dato etiqueta="Firma" valor={fecha(datos.contrato?.fecha_firma)} />
@@ -122,30 +125,39 @@ export default function DetalleContrato({ params }: { params: Promise<{ id: stri
             href={h.url_secop}
             target="_blank"
             rel="noopener noreferrer"
-            className="mt-4 inline-flex items-center gap-1.5 rounded-lg border border-slate-700 px-3 py-1.5
-                       text-xs font-medium text-slate-200 transition hover:border-sky-600 hover:text-sky-300"
+            className="mt-5 inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-2
+                       text-xs font-medium text-foreground transition hover:border-primary hover:text-primary"
           >
-            Ver en SECOP ↗
+            Ver en SECOP
+            <ExternalLink className="size-3.5" aria-hidden="true" />
           </a>
         )}
       </section>
 
       {/* ── Score y por qué ahora ─────────────────────────────────── */}
-      <section className="grid gap-4 sm:grid-cols-[200px_1fr]">
-        <Gauge score={t.risk_score} nivel={t.risk_level} />
-        <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-5">
-          <h2 className="mb-3 text-sm font-semibold text-slate-100">Por qué revisar ahora</h2>
+      <section className="grid gap-4 sm:grid-cols-[190px_1fr]">
+        <div className="card-soft flex flex-col items-center justify-center gap-3 p-6">
+          <ScoreRing score={t.risk_score} color={color} size={104} stroke={9} fontSize={30} />
+          <p className="label-eyebrow" style={{ color }}>
+            {t.risk_level}
+          </p>
+        </div>
+        <div className="card-soft p-6">
+          <h2 className="mb-3 text-sm font-semibold text-foreground">Por qué revisar ahora</h2>
           {t.porque_ahora.length ? (
-            <ul className="space-y-2">
+            <ul className="space-y-2.5">
               {t.porque_ahora.map((r, i) => (
-                <li key={i} className="flex gap-2.5 text-xs leading-relaxed text-slate-300">
-                  <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-sky-400" />
+                <li key={i} className="flex gap-2.5 text-sm leading-relaxed text-foreground/85">
+                  <span
+                    className="mt-1.5 size-1.5 shrink-0 rounded-full"
+                    style={{ backgroundColor: color }}
+                  />
                   {r}
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="text-xs text-slate-500">
+            <p className="text-sm text-muted-foreground">
               Este contrato no entró al triaje: su score está por debajo del umbral.
             </p>
           )}
@@ -154,25 +166,25 @@ export default function DetalleContrato({ params }: { params: Promise<{ id: stri
 
       {/* ── Hallazgos ─────────────────────────────────────────────── */}
       <section>
-        <h2 className="mb-3 text-sm font-semibold text-slate-100">
+        <h2 className="mb-3 text-sm font-semibold text-foreground">
           Hallazgos ({e.hallazgos.length})
         </h2>
         {e.hallazgos.length ? (
-          <div className="space-y-2">
+          <div className="space-y-3">
             {e.hallazgos.map((x, i) => (
               <Hallazgo key={`${x.pattern_code}-${i}`} h={x} />
             ))}
           </div>
         ) : (
-          <p className="rounded-xl border border-slate-800 bg-slate-900/40 p-5 text-xs text-slate-500">
+          <p className="card-soft p-6 text-sm text-muted-foreground">
             El motor no encontró indicadores de riesgo en este contrato.
           </p>
         )}
       </section>
 
       {/* ── Perfil forense ────────────────────────────────────────── */}
-      <section className="rounded-xl border border-slate-800 bg-slate-900/40 p-5">
-        <h2 className="mb-3 text-sm font-semibold text-slate-100">
+      <section className="card-soft p-6">
+        <h2 className="mb-3 text-sm font-semibold text-foreground">
           Perfil forense del contratista
         </h2>
         {forense ? (
@@ -188,15 +200,15 @@ export default function DetalleContrato({ params }: { params: Promise<{ id: stri
                 tipo="contratos"
               />
             </div>
-            <p className="mt-3 text-[11px] text-slate-500">
-              Consultado el {String(forense.consultado_el ?? "").slice(0, 10)} ·{" "}
-              {forense.llamadas} consultas
+            <p className="mt-3 text-[11px] text-muted-foreground">
+              Consultado el {String(forense.consultado_el ?? "").slice(0, 10)} · {forense.llamadas}{" "}
+              consultas
               {forense.omitidos?.length ? ` · ${forense.omitidos.length} omitidas` : ""}
             </p>
           </>
         ) : (
           <div className="space-y-3">
-            <p className="text-xs leading-relaxed text-slate-400">
+            <p className="text-sm leading-relaxed text-muted-foreground">
               Verifica al contratista en RUES, Contraloría, Procuraduría y SECOP, y busca
               requisitos restrictivos en el pliego.
             </p>
@@ -205,25 +217,28 @@ export default function DetalleContrato({ params }: { params: Promise<{ id: stri
         )}
       </section>
 
-      {/* ── Documentos ────────────────────────────────────────────── */}
+      {/* ── Pliego ────────────────────────────────────────────────── */}
       {(capa_c?.pliego?.hallazgos?.length ?? 0) > 0 && (
-        <section className="rounded-xl border border-slate-800 bg-slate-900/40 p-5">
-          <h2 className="mb-3 text-sm font-semibold text-slate-100">Análisis del pliego</h2>
+        <section className="card-soft p-6">
+          <h2 className="mb-3 text-sm font-semibold text-foreground">Análisis del pliego</h2>
           <div className="space-y-3">
             {capa_c!.pliego.hallazgos.map((p: any, i: number) => (
-              <div key={i} className="rounded-lg border border-slate-800 bg-slate-950/50 p-3">
-                <p className="text-xs leading-relaxed text-slate-300">{p.hallazgo}</p>
-                <blockquote className="mt-2 border-l-2 border-sky-700 pl-3 text-xs italic leading-relaxed text-slate-400">
+              <div key={i} className="rounded-xl bg-muted/60 p-4">
+                <p className="text-sm leading-relaxed text-foreground/85">{p.hallazgo}</p>
+                <blockquote
+                  className="mt-2 border-l-2 pl-3 text-sm italic leading-relaxed text-muted-foreground"
+                  style={{ borderColor: "var(--brand-via)" }}
+                >
                   «{p.cita_textual}»
                 </blockquote>
-                <p className="mt-1.5 font-mono text-[11px] text-slate-500">
+                <p className="num mt-2 font-mono text-[11px] text-muted-foreground">
                   {p.archivo ?? "pliego"} · página {p.pagina}
                 </p>
               </div>
             ))}
           </div>
           {capa_c?.modelo && (
-            <p className="mt-3 text-[11px] text-slate-500">
+            <p className="mt-3 text-[11px] text-muted-foreground">
               Analizado con {capa_c.modelo} · ${capa_c.costo_usd.toFixed(4)} USD
             </p>
           )}
@@ -232,14 +247,14 @@ export default function DetalleContrato({ params }: { params: Promise<{ id: stri
 
       {/* ── Líneas de verificación ────────────────────────────────── */}
       {e.lineas_de_verificacion.length > 0 && (
-        <section className="rounded-xl border border-slate-800 bg-slate-900/40 p-5">
-          <h2 className="mb-3 text-sm font-semibold text-slate-100">
+        <section className="card-soft p-6">
+          <h2 className="mb-3 text-sm font-semibold text-foreground">
             Líneas de verificación sugeridas
           </h2>
-          <ol className="space-y-2">
+          <ol className="space-y-2.5">
             {e.lineas_de_verificacion.map((l, i) => (
-              <li key={i} className="flex gap-3 text-xs leading-relaxed text-slate-300">
-                <span className="shrink-0 font-mono text-slate-600">{i + 1}.</span>
+              <li key={i} className="flex gap-3 text-sm leading-relaxed text-foreground/85">
+                <span className="num shrink-0 font-mono text-muted-foreground">{i + 1}.</span>
                 <span className="break-all">{l}</span>
               </li>
             ))}
@@ -247,18 +262,16 @@ export default function DetalleContrato({ params }: { params: Promise<{ id: stri
         </section>
       )}
 
-      {/* ── Trazabilidad y aviso ──────────────────────────────────── */}
-      <section className="rounded-xl border border-slate-800 bg-slate-900/20 p-5">
-        <h2 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-          Trazabilidad
-        </h2>
-        <dl className="grid gap-x-6 gap-y-1 text-[11px] text-slate-500 sm:grid-cols-2">
+      {/* ── Trazabilidad ──────────────────────────────────────────── */}
+      <section className="card-soft p-6">
+        <h2 className="label-eyebrow mb-2">Trazabilidad</h2>
+        <dl className="grid gap-x-6 gap-y-1 text-[11px] text-muted-foreground sm:grid-cols-2">
           <div>Catálogo normativo: v{e.trazabilidad.catalogo_normativo_version}</div>
           <div>Fuente: {e.trazabilidad.fuente_datos}</div>
           <div>Generado: {String(e.trazabilidad.generado_el).slice(0, 19).replace("T", " ")}</div>
           <div>Capas aplicadas: {e.trazabilidad.capas_aplicadas}</div>
         </dl>
-        <p className="mt-4 border-t border-slate-800 pt-3 text-[11px] leading-relaxed text-slate-500">
+        <p className="mt-4 border-t border-hairline pt-3 text-[11px] leading-relaxed text-muted-foreground">
           {AVISO_LEGAL}
         </p>
       </section>
@@ -268,17 +281,24 @@ export default function DetalleContrato({ params }: { params: Promise<{ id: stri
 
 function Marco({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
-      <header className="border-b border-slate-800">
-        <div className="mx-auto flex max-w-4xl items-center gap-4 px-6 py-4">
-          <Link href="/" className="text-sm font-bold tracking-tight hover:text-sky-300">
-            ← Tekel<span className="text-sky-400">Agent</span>
+    <div className="flex min-h-screen flex-col">
+      <header className="sticky top-0 z-10 border-b border-hairline bg-background/85 backdrop-blur">
+        <div className="mx-auto flex max-w-4xl items-center gap-3 px-6 py-4">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-2 text-sm font-semibold transition hover:text-primary"
+          >
+            <ArrowLeft className="size-4" aria-hidden="true" />
+            <span className="icon-tile bg-brand-gradient size-7">
+              <Scale className="size-4" aria-hidden="true" />
+            </span>
+            Tekel<span className="text-gradient">Agent</span>
           </Link>
         </div>
       </header>
-      <main className="mx-auto max-w-4xl space-y-5 px-6 py-6">{children}</main>
-      <footer className="border-t border-slate-800 px-6 py-6">
-        <p className="mx-auto max-w-3xl text-center text-xs leading-relaxed text-slate-500">
+      <main className="mx-auto w-full max-w-4xl flex-1 space-y-5 px-6 py-6">{children}</main>
+      <footer className="border-t border-hairline px-6 py-6">
+        <p className="mx-auto max-w-3xl text-center text-xs leading-relaxed text-muted-foreground">
           {AVISO_LEGAL}
         </p>
       </footer>
@@ -286,43 +306,16 @@ function Marco({ children }: { children: React.ReactNode }) {
   );
 }
 
-function Dato({ etiqueta, valor, acento }: { etiqueta: string; valor: string; acento?: boolean }) {
+function Dato({ etiqueta, valor, color }: { etiqueta: string; valor: string; color?: string }) {
   return (
     <div>
-      <dt className="text-[11px] uppercase tracking-wide text-slate-500">{etiqueta}</dt>
+      <dt className="label-eyebrow">{etiqueta}</dt>
       <dd
-        className={`mt-0.5 font-mono text-sm tabular-nums ${acento ? "text-sky-300" : "text-slate-200"}`}
+        className="num mt-1 font-mono text-sm font-semibold tabular-nums"
+        style={{ color: color ?? "var(--foreground)" }}
       >
         {valor}
       </dd>
-    </div>
-  );
-}
-
-function Gauge({ score, nivel }: { score: number; nivel: string }) {
-  const pct = Math.min(100, Math.max(0, score));
-  const color =
-    nivel === "critico" ? "text-rose-400" : nivel === "medio" ? "text-amber-400" : "text-slate-500";
-  const r = 42;
-  const circ = 2 * Math.PI * r;
-
-  return (
-    <div className="flex flex-col items-center justify-center rounded-xl border border-slate-800 bg-slate-900/40 p-5">
-      <svg viewBox="0 0 100 100" className="h-28 w-28 -rotate-90">
-        <circle cx="50" cy="50" r={r} fill="none" strokeWidth="8" className="stroke-slate-800" />
-        <circle
-          cx="50"
-          cy="50"
-          r={r}
-          fill="none"
-          strokeWidth="8"
-          strokeLinecap="round"
-          strokeDasharray={`${(pct / 100) * circ} ${circ}`}
-          className={`${color} stroke-current transition-all duration-700`}
-        />
-      </svg>
-      <p className={`-mt-[4.6rem] font-mono text-2xl font-bold tabular-nums ${color}`}>{score}</p>
-      <p className="mt-[2.6rem] text-[11px] uppercase tracking-wide text-slate-500">{nivel}</p>
     </div>
   );
 }
@@ -333,10 +326,11 @@ function FilaForense({ titulo, dato, tipo }: { titulo: string; dato: any; tipo: 
 
   if (dato) {
     if (tipo === "rues") {
-      const e = dato.entity ?? {};
-      texto = dato.found === false ? "no encontrado en RUES" : (e.razon_social ?? e.name ?? "encontrado");
-      if (e.fecha_matricula ?? e.registration_date) {
-        texto += ` · desde ${String(e.fecha_matricula ?? e.registration_date).slice(0, 10)}`;
+      const en = dato.entity ?? {};
+      texto =
+        dato.found === false ? "no encontrado en RUES" : (en.razon_social ?? en.name ?? "encontrado");
+      if (en.fecha_matricula ?? en.registration_date) {
+        texto += ` · desde ${String(en.fecha_matricula ?? en.registration_date).slice(0, 10)}`;
       }
     } else if (tipo === "contraloria") {
       alerta = Boolean(dato.is_fiscal_responsible);
@@ -353,9 +347,9 @@ function FilaForense({ titulo, dato, tipo }: { titulo: string; dato: any; tipo: 
   }
 
   return (
-    <div className="flex items-baseline justify-between gap-3 rounded-lg bg-slate-950/50 px-3 py-2">
-      <span className="text-[11px] uppercase tracking-wide text-slate-500">{titulo}</span>
-      <span className={`text-xs ${alerta ? "font-semibold text-rose-300" : "text-slate-300"}`}>
+    <div className="flex items-baseline justify-between gap-3 rounded-lg bg-muted/60 px-3 py-2.5">
+      <span className="label-eyebrow">{titulo}</span>
+      <span className={`text-xs ${alerta ? "font-semibold text-crit" : "text-foreground/85"}`}>
         {texto}
       </span>
     </div>

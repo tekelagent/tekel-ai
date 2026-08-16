@@ -27,8 +27,8 @@ export const FILTROS_VACIOS: EstadoFiltros = {
 };
 
 const campo =
-  "w-full rounded-md border border-slate-700 bg-slate-900/60 px-3 py-2 text-sm text-slate-100 " +
-  "placeholder:text-slate-500 focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500";
+  "w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground " +
+  "placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-ring/40";
 
 function Select({
   etiqueta,
@@ -43,9 +43,7 @@ function Select({
 }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-400">
-        {etiqueta}
-      </span>
+      <span className="label-eyebrow mb-1 block">{etiqueta}</span>
       <select className={campo} value={valor} onChange={(e) => onChange(e.target.value)}>
         <option value="">Todos</option>
         {opciones.map(([v, t]) => (
@@ -77,21 +75,20 @@ export function Filtros({
   );
 
   return (
-    <div className="space-y-4 rounded-xl border border-slate-800 bg-slate-900/40 p-4">
+    <div className="card-soft space-y-4 p-5">
       <div>
         <label className="block">
-          <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-400">
-            Buscar
-          </span>
+          <span className="label-eyebrow mb-1 block">Buscar</span>
           <input
             className={campo}
-            placeholder="Entidad, contratista, objeto… o pega un CO1.PCCNTR.…"
+            placeholder="Entidad, contratista, objeto…"
             value={filtros.q}
             onChange={(e) => set("q")(e.target.value)}
           />
         </label>
-        <p className="mt-1.5 text-xs text-slate-500">
-          Si pegas un identificador que no está en el corpus, se analiza en vivo desde SECOP.
+        <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
+          Pega un <span className="num font-mono">CO1.PCCNTR.…</span> que no esté en el corpus y se
+          analiza en vivo desde SECOP.
         </p>
       </div>
 
@@ -153,9 +150,7 @@ export function Filtros({
           opciones={departamentos.map((d) => [d, d])}
         />
         <label className="block">
-          <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-400">
-            Valor mínimo
-          </span>
+          <span className="label-eyebrow mb-1 block">Valor mínimo</span>
           <input
             className={campo}
             type="number"
@@ -173,14 +168,14 @@ export function Filtros({
         opciones={modalidades.map((m) => [m, m])}
       />
 
-      <div className="flex items-center justify-between border-t border-slate-800 pt-3">
-        <span className="text-sm text-slate-400">
+      <div className="flex items-center justify-between border-t border-hairline pt-3">
+        <span className="num text-sm tabular-nums text-muted-foreground">
           {total.toLocaleString("es-CO")} contratos
         </span>
         {hayFiltros && (
           <button
             onClick={() => setFiltros({ ...FILTROS_VACIOS, q: filtros.q, orden: filtros.orden })}
-            className="text-xs text-sky-400 hover:text-sky-300"
+            className="text-xs font-medium text-primary hover:underline"
           >
             Limpiar filtros
           </button>
