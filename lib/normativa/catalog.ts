@@ -186,6 +186,51 @@ export const NORMATIVA = {
     foco: "entidad",
     verificarEn: "legalize",
   },
+  COLUSION_PREVIA: {
+    norma: "Ley 155 de 1959",
+    articulo: "art. 1",
+    sintesis:
+      "Prohibición de acuerdos restrictivos de la competencia. La colusión en " +
+      "licitaciones sancionada por la SIC es antecedente del contratista.",
+    foco: "contratista",
+    verificarEn: "legalize",
+  },
+  OBRA_INCONCLUSA: {
+    norma: "Ley 2020 de 2020",
+    articulo: null,
+    sintesis:
+      "Registro Nacional de Obras Civiles Inconclusas: las entidades deben " +
+      "reportar las obras que no se terminaron.",
+    foco: "ambos",
+    verificarEn: "legalize",
+  },
+  ANTECEDENTE_OBRA_INCONCLUSA: {
+    norma: "Ley 2020 de 2020",
+    articulo: null,
+    sintesis:
+      "El contratista figura en el Registro Nacional de Obras Civiles " +
+      "Inconclusas por otra obra. Es antecedente de cumplimiento, no inhabilidad.",
+    foco: "contratista",
+    verificarEn: "legalize",
+  },
+  MISMO_SUPERVISOR: {
+    norma: "Ley 1474 de 2011",
+    articulo: "arts. 83-84",
+    sintesis:
+      "Deberes de supervisión: la concentración de un mismo supervisor sobre " +
+      "un mismo contratista concentra también el riesgo de captura del control.",
+    foco: "entidad",
+    verificarEn: "legalize",
+  },
+  LICITANTE_UNICO: {
+    norma: "Ley 80 de 1993",
+    articulo: "art. 24",
+    sintesis:
+      "Principio de libre concurrencia: un proceso competitivo con un solo " +
+      "oferente no realizó la competencia que su modalidad exige.",
+    foco: "entidad",
+    verificarEn: "ambas",
+  },
 } as const satisfies Record<string, CriterioNormativo>;
 
 export type PatternCode = keyof typeof NORMATIVA;

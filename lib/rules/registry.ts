@@ -16,9 +16,17 @@ import { ejecucionAnomala } from "./ejecucion-anomala";
 import { fraccionamiento } from "./fraccionamiento";
 import { pagoAdelantadoRiesgo } from "./pago-adelantado-riesgo";
 import { valorAtipico } from "./valor-atipico";
+import {
+  antecedenteObraInconclusa,
+  colusionPrevia,
+  inhabilidadRepLegal,
+  mismoSupervisor,
+  sancionesPrevias,
+} from "./paco";
 import type { Rule } from "./types";
 
 export const RULES: readonly Rule[] = [
+  // Estructurales sobre contracts
   desequilibrioPagos,
   adiciones50,
   valorAtipico,
@@ -27,15 +35,26 @@ export const RULES: readonly Rule[] = [
   concentracionProveedor,
   pagoAdelantadoRiesgo,
   diciembre,
+  // Batch forense contra snapshots PACO
+  inhabilidadRepLegal,
+  sancionesPrevias,
+  colusionPrevia,
+  antecedenteObraInconclusa,
+  mismoSupervisor,
 ] as const;
 
 export {
   adiciones50,
+  antecedenteObraInconclusa,
+  colusionPrevia,
   concentracionProveedor,
   desequilibrioPagos,
   diciembre,
   ejecucionAnomala,
   fraccionamiento,
+  inhabilidadRepLegal,
+  mismoSupervisor,
   pagoAdelantadoRiesgo,
+  sancionesPrevias,
   valorAtipico,
 };

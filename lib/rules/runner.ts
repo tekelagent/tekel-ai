@@ -12,10 +12,24 @@
  * fuera de todos los agregados (METODOLOGIA §6.8 y §6.9).
  */
 import { RULES } from "./registry";
-import { THRESHOLDS, PISO_MATERIALIDAD_COP } from "./thresholds";
-import { comparablesKey, entitySupplierKey, esComputable } from "./types";
+import { THRESHOLDS, PISO_MATERIALIDAD_COP, MISMO_SUPERVISOR_MIN } from "./thresholds";
+import {
+  comparablesKey,
+  docDigitos,
+  entitySupplierKey,
+  esComputable,
+  pacoVacio,
+  supervisorDoc,
+} from "./types";
 import { daysBetween } from "./format";
-import type { Comparables, ContractRow, Finding, RuleContext } from "./types";
+import type {
+  Comparables,
+  ContractRow,
+  Finding,
+  PacoIndex,
+  ParSupervisor,
+  RuleContext,
+} from "./types";
 
 /** Percentil por interpolación nearest-rank sobre una lista ya ordenada. */
 function percentil(ordenados: readonly number[], p: number): number {
@@ -101,16 +115,52 @@ function buildPeers(contracts: readonly ContractRow[]): Map<string, ContractRow[
   return out;
 }
 
+/**
+ * Agregado por par (supervisor, proveedor) y total supervisado por persona,
+ * para MISMO_SUPERVISOR.
+ */
+function buildSupervisorProveedor(
+  contracts: readonly ContractRow[],
+): Map<string, ParSupervisor> {
+  const totalPorSupervisor = new Map<string, number>();
+  const pares = new Map<string, ParSupervisor>();
+
+  for (const c of contracts) {
+    if (!esComputable(c)) continue;
+    const sup = supervisorDoc(c);
+    if (!sup) continue;
+    totalPorSupervisor.set(sup, (totalPorSupervisor.get(sup) ?? 0) + 1);
+
+    const prov = docDigitos(c.documento_proveedor);
+    if (!prov) continue;
+    const key = `${sup}|${prov}`;
+    const par = pares.get(key) ?? { contratos: 0, valorTotal: 0, totalSupervisados: 0, ids: [] };
+    par.contratos += 1;
+    par.valorTotal += c.valor_contrato ?? 0;
+    par.ids.push(c.id_contrato);
+    pares.set(key, par);
+  }
+
+  for (const [key, par] of pares) {
+    par.totalSupervisados = totalPorSupervisor.get(key.split("|")[0]) ?? par.contratos;
+  }
+  return pares;
+}
+
 /** Construye el contexto completo. Recibe el universo, no un lote. */
 export function buildContext(
   contracts: readonly ContractRow[],
   today: string,
   pisoMaterialidad: number = PISO_MATERIALIDAD_COP,
+  opts: { paco?: PacoIndex; mismoSupervisorMin?: number } = {},
 ): RuleContext {
   return {
     peersByEntitySupplier: buildPeers(contracts),
     comparables: buildComparables(contracts),
     valorPorEntidad24m: buildValorPorEntidad(contracts, today),
+    supervisorProveedor: buildSupervisorProveedor(contracts),
+    paco: opts.paco ?? pacoVacio(),
+    mismoSupervisorMin: opts.mismoSupervisorMin ?? MISMO_SUPERVISOR_MIN,
     today,
     pisoMaterialidad,
   };

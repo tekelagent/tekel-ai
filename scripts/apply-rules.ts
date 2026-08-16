@@ -26,7 +26,8 @@ import { RULES } from "../lib/rules/registry";
 import { buildContext, runRules, todayUTC } from "../lib/rules/runner";
 import { triar, type Prioridad } from "../lib/rules/priority";
 import { PISO_MATERIALIDAD_COP } from "../lib/rules/thresholds";
-import type { ContractRow, Finding } from "../lib/rules/types";
+import { pacoVacio } from "../lib/rules/types";
+import type { ContractRow, Finding, PacoIndex } from "../lib/rules/types";
 
 const { values: args } = parseArgs({
   options: {
@@ -73,7 +74,9 @@ const COLUMNS = [
   "proveedor",
   "url_proceso",
   "valor_verificar",
+  "representante_id",
   "liquidacion:raw->>liquidaci_n",
+  "supervisor_doc:raw->>n_mero_de_documento_supervisor",
 ].join(",");
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -102,10 +105,13 @@ async function loadAllContracts(): Promise<ContractRow[]> {
     if (error) throw new Error(`Supabase select: ${error.message}`);
     if (!data || data.length === 0) break;
     for (const row of data as unknown as Array<Record<string, unknown>>) {
-      const { liquidacion, ...resto } = row;
+      const { liquidacion, supervisor_doc, ...resto } = row;
       todos.push({
         ...(resto as unknown as ContractRow),
-        raw: liquidacion === null || liquidacion === undefined ? {} : { "liquidaci_n": liquidacion },
+        raw: {
+          ...(liquidacion == null ? {} : { "liquidaci_n": liquidacion }),
+          ...(supervisor_doc == null ? {} : { "n_mero_de_documento_supervisor": supervisor_doc }),
+        },
       });
     }
     process.stdout.write(`\r  cargados ${todos.length} contratos…`);
@@ -113,6 +119,73 @@ async function loadAllContracts(): Promise<ContractRow[]> {
   }
   process.stdout.write("\n");
   return todos;
+}
+
+/**
+ * Reintenta una operación de red ante fallos transitorios.
+ *
+ * Contra Supabase se ven `fetch failed` esporádicos que no son errores de la
+ * consulta sino de la conexión. Sin esto, un parpadeo tumba una corrida de
+ * 20.000 contratos que ya lleva minutos.
+ */
+async function conReintentos<T>(etiqueta: string, fn: () => Promise<T>): Promise<T> {
+  let ultimo: unknown;
+  for (let intento = 1; intento <= 4; intento++) {
+    try {
+      return await fn();
+    } catch (err) {
+      ultimo = err;
+      const msg = String((err as Error).message);
+      // Un error de la consulta no se arregla repitiéndola.
+      if (!/fetch failed|ECONNRESET|ETIMEDOUT|socket|network/i.test(msg)) throw err;
+      if (intento === 4) break;
+      await new Promise((r) => setTimeout(r, 1000 * intento * intento));
+    }
+  }
+  throw new Error(`${etiqueta} tras 4 intentos: ${(ultimo as Error).message}`);
+}
+
+/**
+ * Carga los snapshots PACO y los indexa por documento.
+ *
+ * Cada fila se registra bajo `documento` y bajo `documento_base` (sin dígito de
+ * verificación), porque PACO publica los NIT con DV pegado y SECOP sin él.
+ */
+async function loadPaco(): Promise<PacoIndex> {
+  const idx = pacoVacio();
+  const tablas: Array<[keyof PacoIndex, string, string]> = [
+    ["fiscales", "paco_responsabilidades_fiscales", "documento,documento_base,nombre,entidad_afectada,snapshot_fecha"],
+    ["siri", "paco_siri", "documento,documento_base,nombre,sancion,fecha_providencia,vigente_hasta,entidad,cargo,snapshot_fecha"],
+    ["multas", "paco_multas", "documento,documento_base,nombre,entidad,resolucion,valor_multa,fecha,snapshot_fecha"],
+    ["colusiones", "paco_colusiones", "documento,documento_base,nombre,caso,resolucion_sancion,multa_inicial,snapshot_fecha"],
+    ["obras", "paco_obras_inconclusas", "documento,documento_base,nombre,nit_entidad,entidad,objeto,valor_contrato,estado,snapshot_fecha"],
+  ];
+
+  for (const [clave, tabla, cols] of tablas) {
+    const PAGE = 1000;
+    for (let offset = 0; ; offset += PAGE) {
+      const { data, error } = await supabase
+        .from(tabla)
+        .select(cols)
+        .order("documento", { ascending: true })
+        .range(offset, offset + PAGE - 1);
+      if (error) throw new Error(`Supabase select ${tabla}: ${error.message}`);
+      if (!data || data.length === 0) break;
+      for (const fila of data as unknown as Array<Record<string, unknown>>) {
+        const mapa = idx[clave] as Map<string, unknown[]>;
+        for (const k of [fila.documento, fila.documento_base]) {
+          const key = typeof k === "string" ? k : null;
+          if (!key) continue;
+          const arr = mapa.get(key) ?? [];
+          // Sin duplicar cuando documento y documento_base coinciden.
+          if (!arr.includes(fila)) arr.push(fila);
+          mapa.set(key, arr);
+        }
+      }
+      if (data.length < PAGE) break;
+    }
+  }
+  return idx;
 }
 
 /** Hallazgos de otras capas (llm, croma), para que el score los sume también. */
@@ -142,10 +215,12 @@ async function loadOtherLayerFindings(): Promise<Map<string, Finding[]>> {
 /** Escribe los hallazgos de un lote y borra los de `rules` que dejaron de aplicar. */
 async function writeFindings(findings: Finding[], contractIds: string[]) {
   if (findings.length) {
-    const { error } = await supabase
-      .from("findings")
-      .upsert(findings, { onConflict: "contract_id,pattern_code,source" });
-    if (error) throw new Error(`Supabase upsert findings: ${error.message}`);
+    await conReintentos("upsert findings", async () => {
+      const { error } = await supabase
+        .from("findings")
+        .upsert(findings, { onConflict: "contract_id,pattern_code,source" });
+      if (error) throw new Error(`Supabase upsert findings: ${error.message}`);
+    });
   }
 
   // Limpieza de hallazgos obsoletos: sin esto el script sería idempotente solo
@@ -163,13 +238,16 @@ async function writeFindings(findings: Finding[], contractIds: string[]) {
     if (!sinHallazgo.length) continue;
     // Se trocea: cientos de UUID en la query string revientan la petición.
     for (let i = 0; i < sinHallazgo.length; i += 100) {
-      const { error } = await supabase
-        .from("findings")
-        .delete()
-        .eq("source", "rules")
-        .eq("pattern_code", rule.code)
-        .in("contract_id", sinHallazgo.slice(i, i + 100));
-      if (error) throw new Error(`Supabase delete findings: ${error.message}`);
+      const trozo = sinHallazgo.slice(i, i + 100);
+      await conReintentos("delete findings", async () => {
+        const { error } = await supabase
+          .from("findings")
+          .delete()
+          .eq("source", "rules")
+          .eq("pattern_code", rule.code)
+          .in("contract_id", trozo);
+        if (error) throw new Error(`Supabase delete findings: ${error.message}`);
+      });
     }
   }
 }
@@ -188,8 +266,10 @@ async function writeTriaje(filas: FilaTriaje[]) {
   if (!filas.length) return;
   // Se incluye id_contrato porque el upsert construye la tupla de INSERT antes
   // de resolver el conflicto, y esa columna es NOT NULL.
-  const { error } = await supabase.from("contracts").upsert(filas, { onConflict: "id" });
-  if (error) throw new Error(`Supabase upsert contracts: ${error.message}`);
+  await conReintentos("upsert contracts", async () => {
+    const { error } = await supabase.from("contracts").upsert(filas, { onConflict: "id" });
+    if (error) throw new Error(`Supabase upsert contracts: ${error.message}`);
+  });
 }
 
 async function main() {
@@ -201,8 +281,15 @@ async function main() {
   const contratos = await loadAllContracts();
   if (!contratos.length) return console.log("No hay contratos que evaluar.");
 
+  console.log("Cargando snapshots PACO…");
+  const paco = await loadPaco();
+  console.log(
+    `  fiscales ${paco.fiscales.size} · SIRI ${paco.siri.size} · multas ${paco.multas.size} · ` +
+      `colusiones ${paco.colusiones.size} · obras ${paco.obras.size} (documentos indexados)`,
+  );
+
   console.log("Precalculando agregados de corpus…");
-  const ctx = buildContext(contratos, TODAY, PISO);
+  const ctx = buildContext(contratos, TODAY, PISO, { paco });
   console.log(`  ${ctx.peersByEntitySupplier.size} pares entidad-proveedor`);
   console.log(`  ${ctx.comparables.size} grupos de comparables (tipo × departamento)`);
   const conMasa = [...ctx.comparables.values()].filter((g) => g.n >= 30).length;

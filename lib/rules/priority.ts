@@ -67,9 +67,11 @@ export function patronesIndependientes(findings: readonly Finding[]): number {
   const familias = new Set<string>();
   for (const f of findings) {
     const code = f.pattern_code as PatternCode;
-    if (!familiaOf(code)) continue;
+    const familia = familiaOf(code);
+    // Un código que el catálogo no conoce no aporta señal: se ignora.
+    if (!familia) continue;
     if (esSoloAgravante(code)) continue;
-    familias.add(familiaOf(code));
+    familias.add(familia);
   }
   return familias.size;
 }

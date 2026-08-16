@@ -56,6 +56,11 @@ normativo, puntos, condiciones de exclusión (cuándo NO opina) y confianza.
 | PAGO_ADELANTADO_RIESGO | A | entidad | 10→30 | Manejo de anticipos (Ley 1474/2011 art. 91); sube a 30 si el proveedor es reciente |
 | DICIEMBRE | A | entidad | 10 | Indicio de deficiencia de planeación (Ley 80 arts. 25-26). SOLO agravante, nunca dispara prioridad por sí solo |
 | OBJETO_DIFUSO | B-LLM | entidad | 10 | Deber de planeación y definición del objeto |
+| COLUSION_PREVIA | A (PACO) | contratista | 45 | Acuerdos restrictivos de la competencia (Ley 155/1959 art. 1); colusión sancionada por la SIC |
+| OBRA_INCONCLUSA | A (PACO) | ambos | 40 | Registro Nacional de Obras Civiles Inconclusas (Ley 2020 de 2020). **No implementable contra este corpus — ver §7** |
+| ANTECEDENTE_OBRA_INCONCLUSA | A (PACO) | contratista | 25→35 | Ley 2020 de 2020; el contratista figura en el registro por otra obra. Sube a 35 si la obra inconclusa es con la MISMA entidad que vuelve a contratarlo |
+| LICITANTE_UNICO | A (processes) | entidad | 25 | Libre concurrencia (Ley 80 art. 24); proceso competitivo con un solo oferente |
+| MISMO_SUPERVISOR | A | entidad | 15 | Deberes de supervisión (Ley 1474/2011 arts. 83-84). SOLO agravante, nunca dispara prioridad por sí solo |
 
 Las referencias normativas del catálogo son puntos de partida curados. En Capa C,
 el texto vigente del artículo se recupera vía Croma Legalize y los conceptos
@@ -85,7 +90,28 @@ recuperado en la misma sesión.**
   12 meses. El piso de materialidad NO aplica aquí: lo pequeño es la señal.
 - **CONCENTRACION_PROVEEDOR:** mismo documento_proveedor con ≥N contratos (default
   8) o ≥X% del valor contratado por la entidad en 24 meses.
-- **DICIEMBRE / PAGO_ADELANTADO_RIESGO:** nunca elevan prioridad por sí solos.
+- **DICIEMBRE / PAGO_ADELANTADO_RIESGO / MISMO_SUPERVISOR:** nunca elevan prioridad
+  por sí solos.
+- **Reglas contra snapshots PACO** (INHABILIDAD_REP_LEGAL, SANCIONES_PREVIAS,
+  COLUSION_PREVIA, ANTECEDENTE_OBRA_INCONCLUSA): el match es **siempre por número
+  de documento exacto, nunca por nombre**. PACO publica los NIT con dígito de
+  verificación pegado y SECOP sin él, así que se compara contra ambas variantes.
+  Todo hallazgo declara en `evidence` la fuente y la fecha del snapshot: son
+  fotos, no consulta viva.
+- **INHABILIDAD_REP_LEGAL:** dos fuentes. (a) Boletín de Responsables Fiscales:
+  figurar en él ES el efecto inhabilitante mientras dure la inclusión (Ley 610 de
+  2000 art. 60), así que el match exacto basta para confianza **alta**. (b) SIRI,
+  cruzado contra `representante_id` y contra `documento_proveedor` cuando el
+  contratista es persona natural. Con fecha de providencia y duración se calcula
+  vigencia → confianza **alta**; sin plazo declarado (típico de DESTITUCION) →
+  confianza **media** y el detail dice "vigencia por confirmar". **Nunca se afirma
+  inhabilidad activa sin fecha que la respalde.**
+- **MISMO_SUPERVISOR:** ≥N contratos del par (cédula del supervisor, documento del
+  proveedor), match por cédula exacta. `MISMO_SUPERVISOR_MIN`, default 4.
+  **Umbral relativo al corpus**: con 20.000 de los 201.331 contratos de Atlántico
+  el máximo observado por par es 5, así que un umbral de 10 daría cero; al
+  ingestar el universo completo se reevalúa al alza. Confianza alta si el
+  proveedor concentra ≥1/3 de lo que esa persona supervisa, media si menos.
 
 Cada finding almacena: `confianza` (alta/media/baja según completitud de datos),
 `foco`, y `evidence` con las cifras exactas que dispararon (nunca texto genérico).
@@ -185,3 +211,27 @@ efecto). Deliberadamente NO se afirma "causa": eso es del investigador.
 - Los criterios normativos del catálogo se verifican contra texto vigente vía
   Legalize en Capa C; el catálogo estático puede desactualizarse y por eso se
   versiona.
+
+### Fuentes disponibles que NO se usan, y por qué
+
+- **Sanciones penales FGN (PACO).** Descargable, no cargado. El archivo no trae
+  ningún identificador de persona: son agregados por municipio y tipo de delito
+  (`DEPARTAMENTO, MUNICIPIO, TITULO, CAPITULO, ARTICULO, AÑO`). Usar densidad
+  municipal de delitos dentro del score sería **falacia ecológica**: castigaría
+  la ubicación del contrato, no la conducta del contratista. En el roadmap queda
+  como capa de contexto territorial **en el mapa, nunca en el score**.
+- **OBRA_INCONCLUSA por código de contrato.** El Registro Nacional de Obras
+  Civiles Inconclusas identifica las obras con códigos de SECOP I / pre-CO1
+  (`3600`, `001`, `721033`), incompatibles con los identificadores de SECOP II
+  del corpus (`CO1.PCCNTR.*`). El patrón queda declarado en §3 pero sin
+  implementar; el cruce viable es por documento del contratista
+  (ANTECEDENTE_OBRA_INCONCLUSA).
+- **Plan de entregas planeado vs real (Croma).** `execution_items` viene vacío
+  en los contratos probados, así que no hay base para comparar lo planeado con
+  lo ejecutado.
+- **Valor de las adiciones (Croma).** `additions` en `/co/secop/contract/v1`
+  trae identificador, tipo, descripción y fecha, pero **no el monto**. ADICIONES_50
+  sigue en modo aproximado declarado.
+- **Colusiones SIC.** Cargado y con la regla activa, pero da 0 matches contra el
+  corpus actual: son 103 casos de alcance nacional frente a un solo departamento.
+  Se mantiene porque cuesta cero y con más territorio puede disparar.

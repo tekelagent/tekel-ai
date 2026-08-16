@@ -74,6 +74,11 @@ web_modules/
 .cache
 .parcel-cache
 
+# Snapshots descargados de PACO. Son grandes y se re-descargan;
+# data/paco/README.md sí se versiona para dejar constancia de fecha y fuente.
+data/paco/*
+!data/paco/README.md
+
 # Next.js build output
 .next
 out

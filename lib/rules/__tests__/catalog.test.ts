@@ -50,8 +50,18 @@ describe("catálogo de patrones — pesos fijos de METODOLOGIA §3", () => {
     expect(pointsOf(code)).toBe(puntos);
   });
 
-  it("declara los 16 patrones de la especificación", () => {
-    expect(Object.keys(PATTERNS)).toHaveLength(16);
+  it.each([
+    ["COLUSION_PREVIA", 45],
+    ["OBRA_INCONCLUSA", 40],
+    ["ANTECEDENTE_OBRA_INCONCLUSA", 25],
+    ["LICITANTE_UNICO", 25],
+    ["MISMO_SUPERVISOR", 15],
+  ] as const)("%s pesa %i puntos", (code, puntos) => {
+    expect(pointsOf(code)).toBe(puntos);
+  });
+
+  it("declara los 21 patrones de la especificación", () => {
+    expect(Object.keys(PATTERNS)).toHaveLength(21);
   });
 
   it("todo patrón tiene criterio normativo, sin excepciones", () => {

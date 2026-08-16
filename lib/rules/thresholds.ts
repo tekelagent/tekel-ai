@@ -14,6 +14,16 @@
 /** Piso de materialidad para P1 y para "cuantía alta" en P2 (METODOLOGIA §4). */
 export const PISO_MATERIALIDAD_COP = 100_000_000;
 
+/**
+ * Contratos mínimos del par (supervisor, proveedor) para MISMO_SUPERVISOR.
+ *
+ * UMBRAL RELATIVO AL CORPUS. Con los 20.000 contratos de Atlántico —el 10% del
+ * universo del departamento— el máximo observado por par es 5, así que un
+ * umbral de 10 daría cero. Al ingestar el universo completo hay que
+ * reevaluarlo al alza.
+ */
+export const MISMO_SUPERVISOR_MIN = Number(process.env.MISMO_SUPERVISOR_MIN) || 4;
+
 export const THRESHOLDS = {
   DESEQUILIBRIO_PAGOS: {
     /** METODOLOGIA §3: dispara si %pagado − %tiempo ≥ 25 puntos porcentuales. */

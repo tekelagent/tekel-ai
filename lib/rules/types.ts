@@ -41,6 +41,7 @@ export type ContractRow = {
   fecha_fin: string | null;
   documento_proveedor: string | null;
   proveedor: string | null;
+  representante_id: string | null;
   url_proceso: string | null;
   /** true = el valor reportado es inverosímil (METODOLOGIA §6.8). */
   valor_verificar: boolean;
@@ -82,6 +83,74 @@ export type Comparables = {
  * en el runner sobre el universo completo y se inyectan; así VALOR_ATIPICO,
  * FRACCIONAMIENTO y CONCENTRACION_PROVEEDOR siguen siendo funciones puras.
  */
+/** Filas de los snapshots PACO, acotadas a lo que las reglas leen. */
+export type PacoFiscal = {
+  documento: string;
+  nombre: string | null;
+  entidad_afectada: string | null;
+  snapshot_fecha: string;
+};
+export type PacoSiri = {
+  documento: string;
+  nombre: string | null;
+  sancion: string | null;
+  fecha_providencia: string | null;
+  /** null = la sanción no declara plazo: no se afirma inhabilidad activa. */
+  vigente_hasta: string | null;
+  entidad: string | null;
+  cargo: string | null;
+  snapshot_fecha: string;
+};
+export type PacoMulta = {
+  documento: string;
+  nombre: string | null;
+  entidad: string | null;
+  resolucion: string | null;
+  valor_multa: number | null;
+  fecha: string | null;
+  snapshot_fecha: string;
+};
+export type PacoColusion = {
+  documento: string;
+  nombre: string | null;
+  caso: string | null;
+  resolucion_sancion: string | null;
+  multa_inicial: number | null;
+  snapshot_fecha: string;
+};
+export type PacoObra = {
+  documento: string | null;
+  nombre: string | null;
+  nit_entidad: string | null;
+  entidad: string | null;
+  objeto: string | null;
+  valor_contrato: number | null;
+  estado: string | null;
+  snapshot_fecha: string;
+};
+
+/**
+ * Índices de PACO por documento. Cada fila se registra bajo su documento tal
+ * cual y bajo su variante sin dígito de verificación, porque PACO publica los
+ * NIT con DV pegado y SECOP sin él.
+ */
+export type PacoIndex = {
+  fiscales: Map<string, PacoFiscal[]>;
+  siri: Map<string, PacoSiri[]>;
+  multas: Map<string, PacoMulta[]>;
+  colusiones: Map<string, PacoColusion[]>;
+  obras: Map<string, PacoObra[]>;
+};
+
+/** Agregado por par (supervisor, proveedor) para MISMO_SUPERVISOR. */
+export type ParSupervisor = {
+  contratos: number;
+  valorTotal: number;
+  /** Total de contratos que supervisa esa persona, de cualquier proveedor. */
+  totalSupervisados: number;
+  ids: string[];
+};
+
 export type RuleContext = {
   /**
    * Contratos agrupados por `nit_entidad|documento_proveedor`, ordenados por
@@ -96,7 +165,39 @@ export type RuleContext = {
   today: string;
   /** Piso de materialidad en COP (METODOLOGIA §4). */
   pisoMaterialidad: number;
+  /** Snapshots PACO indexados por documento. Vacío si no se cargaron. */
+  paco: PacoIndex;
+  /** Pares (cédula supervisor|documento proveedor) → agregado. */
+  supervisorProveedor: Map<string, ParSupervisor>;
+  /** Umbral configurable de MISMO_SUPERVISOR (default 4). */
+  mismoSupervisorMin: number;
 };
+
+/** Índice PACO vacío, para tests y para cuando no se cargaron snapshots. */
+export function pacoVacio(): PacoIndex {
+  return {
+    fiscales: new Map(),
+    siri: new Map(),
+    multas: new Map(),
+    colusiones: new Map(),
+    obras: new Map(),
+  };
+}
+
+/** Solo dígitos, para comparar documentos entre fuentes. */
+export function docDigitos(s: string | null | undefined): string | null {
+  const v = (s ?? "").replace(/\D/g, "");
+  return v.length >= 5 ? v : null;
+}
+
+/** Cédula del supervisor, que vive en la fila cruda y no en columna propia. */
+export function supervisorDoc(c: ContractRow): string | null {
+  const v = c.raw?.["n_mero_de_documento_supervisor"];
+  if (v === undefined || v === null) return null;
+  const s = String(v).trim();
+  if (!s || /^no\s/i.test(s)) return null;
+  return docDigitos(s);
+}
 
 /** Una regla determinista de la Capa A. */
 export type Rule = {

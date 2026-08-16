@@ -38,6 +38,7 @@ export function contract(overrides: Partial<ContractRow> = {}): ContractRow {
     fecha_fin: "2025-12-31",
     documento_proveedor: "111111111",
     proveedor: "PROVEEDOR DE PRUEBA",
+    representante_id: "22222222",
     url_proceso: "https://community.secop.gov.co/Public/Tendering/prueba",
     valor_verificar: false,
     raw: {},

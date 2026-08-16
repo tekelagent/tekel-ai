@@ -190,6 +190,22 @@ async function procesar(c: Pendiente): Promise<{
     return { ok: true, costUsd, retried, resumen: out.resumen_riesgo, difuso: out.objeto_difuso };
   }
 
+  // Las escrituras van dentro de try/catch: un fallo de red en un contrato lo
+  // marca como omitido y la corrida sigue. Antes tumbaba las 20.000 restantes,
+  // y aunque el script es reanudable, cada relanzada vuelve a pagar el arranque.
+  try {
+    return await escribir(c, out, costUsd, retried);
+  } catch (err) {
+    return { ok: false, costUsd, retried, error: `escritura: ${(err as Error).message}` };
+  }
+}
+
+async function escribir(
+  c: Pendiente,
+  out: Enrichment,
+  costUsd: number,
+  retried: boolean,
+): Promise<{ ok: boolean; costUsd: number; retried: boolean; resumen?: string; difuso?: boolean; error?: string }> {
   const ahora = new Date().toISOString();
   const { error: upErr } = await supabase.from("contracts").upsert(
     [

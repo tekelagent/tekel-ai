@@ -161,7 +161,54 @@ export const PATTERNS = {
     soloAgravante: false,
     implemented: true,
   },
+  COLUSION_PREVIA: {
+    points: 45,
+    layer: "rules",
+    familia: "contratista",
+    soloAgravante: false,
+    // Activa aunque hoy dé 0 matches: cuesta cero y con el universo completo
+    // o más departamentos puede disparar.
+    implemented: true,
+  },
+  OBRA_INCONCLUSA: {
+    points: 40,
+    layer: "rules",
+    familia: "ejecucion",
+    soloAgravante: false,
+    // El Registro Nacional usa códigos SECOP I / pre-CO1, incompatibles con el
+    // corpus de SECOP II. Declarado en METODOLOGIA §7.
+    implemented: false,
+  },
+  ANTECEDENTE_OBRA_INCONCLUSA: {
+    points: 25,
+    layer: "rules",
+    familia: "contratista",
+    soloAgravante: false,
+    implemented: true,
+  },
+  MISMO_SUPERVISOR: {
+    points: 15,
+    layer: "rules",
+    familia: "ejecucion",
+    // Nunca prioriza solo: es un indicio de concentración del control.
+    soloAgravante: true,
+    implemented: true,
+  },
+  LICITANTE_UNICO: {
+    points: 25,
+    layer: "rules",
+    familia: "seleccion",
+    soloAgravante: false,
+    implemented: true,
+  },
 } as const satisfies Record<PatternCode, PatternSpec>;
+
+/**
+ * ANTECEDENTE_OBRA_INCONCLUSA sube de 25 a 35 cuando la obra inconclusa
+ * registrada es con la MISMA entidad que vuelve a contratar: la entidad ya
+ * conocía el incumplimiento y contrató igual.
+ */
+export const ANTECEDENTE_OBRA_MISMA_ENTIDAD_PUNTOS = 35;
 
 export type { PatternCode };
 
