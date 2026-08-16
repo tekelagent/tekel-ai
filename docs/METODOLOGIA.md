@@ -226,6 +226,25 @@ descubribles automáticamente**. Se verificaron las tres rutas posibles:
    validación para acceder a la página"*. De toda la sesión se captura **una sola
    petición XHR: el archivo de traducciones del propio reCAPTCHA**. El contenido
    del proceso nunca se renderiza.
+4. **API OCDS de Colombia Compra Eficiente**: `apiocds.colombiacompra.gov.co`
+   devuelve **502 Bad Gateway en todas las rutas, incluida la raíz**, con los dos
+   prefijos publicados (`apiCCE2.0` y `apiCCE-2.0`). El gateway responde; el
+   backend está caído. La API que el registro de Open Contracting Partnership
+   lista para Colombia —`colombiacompra.gov.co/transparencia/api`— redirige a una
+   página de glosario. Y el volcado OCDS registrado **cubre Ene 2011 – Abr 2022 y
+   está marcado *"no longer updated by the publisher"***.
+5. **Barrido de rutas públicas de SECOP II**: el captcha es *selectivo*.
+   `ContractNoticePhases/View` responde 200 sin captcha, pero es un cascarón
+   estático que ni siquiera usa su parámetro `unique`. Bajo `/Public/Archive/`
+   **solo existe `RetrieveFile`**: las otras diez rutas probadas dan 404, y
+   `RetrieveFile` sin `DocumentId` responde *"Ha ocurrido un error al descargar el
+   archivo"*. No hay ninguna ruta pública de listado.
+
+**Esto es en sí un hallazgo de transparencia.** El Estado colombiano publica los
+datos estructurados de su contratación como datos abiertos, pero **los documentos
+que sustentan esas cifras —pliegos, estudios previos, otrosíes— no son accesibles
+de forma programática**: su API OCDS lleva años sin actualizar y su portal protege
+las páginas con reCAPTCHA. Auditar a escala exige exactamente esos documentos.
 
 SECOP II protege esas páginas con Google reCAPTCHA. **Tekel no intenta resolverlo
 ni evadirlo**: es un control de acceso que el titular del sitio puso
@@ -243,6 +262,18 @@ Lo que sí funciona, y sobre lo que se construye:
   estado, el usuario aporta el PDF —que es público y él sí puede descargar— y el
   flujo se reanuda solo desde el paso de análisis. La cadena completa
   (forense → documentos → pliego → expediente) queda intacta.
+
+**Arquitectura de documentos (congelada):**
+
+1. `discover` intenta lo barato y **falla rápido, con tope de 5 s**. No se
+   insiste contra un muro conocido.
+2. `upload` acepta **varios PDF a la vez**, los clasifica por tipo y los rutea:
+   el pliego alimenta PLIEGO_SASTRE; el otrosí aporta los **montos reales de la
+   adición**, que ascienden ADICIONES_50 de aproximada a **confianza alta**
+   —justo el dato que ni SECOP ni Croma publican.
+3. **Roadmap declarado**: descubrimiento automatizado vía navegador headless o
+   vía API OCDS **cuando CCE restablezca el servicio**. La pieza que falta es de
+   ellos, no nuestra: la descarga por `DocumentId` ya funciona.
 
 ### Fuentes disponibles que NO se usan, y por qué
 

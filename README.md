@@ -80,6 +80,28 @@ supabase/
 CLAUDE.md       # Convenciones para Claude Code — leer primero
 ```
 
+## Un hallazgo de transparencia, de paso
+
+Construyendo esto encontramos algo que merece decirse: **el Estado colombiano
+publica los datos de su contratación, pero no los documentos que los sustentan.**
+
+- Su **API OCDS** (`apiocds.colombiacompra.gov.co`) responde **502 en todas las
+  rutas, incluida la raíz**. El volcado OCDS que Colombia registra ante el Open
+  Contracting Partnership cubre **hasta abril de 2022** y está marcado *"no longer
+  updated by the publisher"*.
+- El portal **SECOP II protege con reCAPTCHA** las páginas de detalle de proceso,
+  que son las únicas que listan los adjuntos. Un navegador automatizado recibe
+  título `ReCaptcha` y ni una sola petición de datos.
+- **No existe ninguna ruta pública de listado**: bajo `/Public/Archive/` solo vive
+  `RetrieveFile`, que descarga un documento si ya conoces su `DocumentId` —pero
+  nada te dice cuáles son los de un proceso.
+
+O sea: las cifras son auditables, los pliegos no. Y el pliego es donde vive el
+direccionamiento. Tekel lo resuelve pidiendo el documento al usuario —público, él
+sí puede descargarlo— y analizándolo al instante. **Roadmap: descubrimiento
+automatizado por navegador headless o vía OCDS cuando CCE restablezca el
+servicio**; la descarga por identificador ya funciona.
+
 ## Aviso legal
 
 Tekel Agent señala **indicadores de riesgo** verificables en fuentes oficiales.
