@@ -69,6 +69,7 @@ export default function DashboardPage() {
             metricas ?? {
               contratos_vigilados: 0,
               plata_en_riesgo_p1: 0,
+              por_salir_p1: 0,
               contratos_criticos: 0,
               hallazgos: 0,
             }

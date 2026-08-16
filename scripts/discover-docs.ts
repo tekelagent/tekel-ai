@@ -125,7 +125,13 @@ async function main() {
   console.log(`Descubrimiento de documentos — datos abiertos\n${"═".repeat(74)}`);
 
   // ── 1. Objetivos ────────────────────────────────────────────────────────
-  let q = sb.from("contracts").select("id,id_contrato,nombre_entidad,prioridad,plata_en_riesgo");
+  // `proceso_de_compra` sale de la fila original de Socrata: es el CO1.BDOS.*
+  // autoritativo. Se proyecta desde raw para no traerse el JSON entero.
+  let q = sb
+    .from("contracts")
+    .select(
+      "id,id_contrato,nombre_entidad,prioridad,plata_en_riesgo,proceso_de_compra:raw->>proceso_de_compra",
+    );
   if (args["id-contrato"]?.length) q = q.in("id_contrato", args["id-contrato"]);
   else q = q.in("prioridad", prioridades);
   q = q.order("plata_en_riesgo", { ascending: false, nullsFirst: false });
@@ -159,6 +165,18 @@ async function main() {
   // ── 2a. Documentos de la etapa CONTRATO (llave n_mero_de_contrato) ──────
   // Aquí viven la minuta, los otrosíes y los informes de ejecución.
   const procesoDeContrato = new Map<string, Set<string>>();
+
+  // El puente al proceso se siembra desde `proceso_de_compra`, no se deduce de
+  // las filas de documentos. La diferencia importa: un contrato que solo tenga
+  // adjuntos de la etapa precontractual no produce ninguna fila de la que
+  // deducirlo, y quedaría sin pliego justamente por no tener minuta.
+  for (const c of contratos) {
+    const bdos = (c as { proceso_de_compra?: string | null }).proceso_de_compra;
+    if (!bdos || !/^CO1\./.test(bdos)) continue;
+    const s = procesoDeContrato.get(bdos) ?? new Set<string>();
+    s.add(String(c.id_contrato));
+    procesoDeContrato.set(bdos, s);
+  }
   for (let i = 0; i < ids.length; i += LOTE) {
     const lote = ids.slice(i, i + LOTE);
     const inList = lote.map((v) => `'${v.replace(/'/g, "''")}'`).join(",");

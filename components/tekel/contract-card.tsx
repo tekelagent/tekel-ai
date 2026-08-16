@@ -2,6 +2,7 @@ import Link from "next/link"
 import { AlertTriangle, ArrowUpRight, Building2, CheckCircle2, Landmark, Wallet } from "lucide-react"
 import type { Contract, Filters } from "@/lib/types"
 import { abbreviateCOP, formatDateShort } from "@/lib/format"
+import { cifraClave } from "@/lib/cifra-clave"
 import { priorityTone, riskColor } from "./meta"
 import { ScoreRing } from "./score-ring"
 import { PatternChips } from "./pattern-chips"
@@ -17,14 +18,9 @@ export function ContractCard({ contract: c, modo, patrones = [] }: ContractCardP
   const tone = priorityTone(c.prioridad)
   const color = riskColor(c.risk_level)
   const primaryReason = c.porque_ahora[0]
-  // La etiqueta dice de dónde sale la cifra. Sin rastro de pagos es el valor
-  // total del contrato, no un pendiente confirmado, y no debe leerse igual.
-  const riesgoLabel =
-    modo === "historico"
-      ? "Pagado bajo revisión"
-      : c.plata_procedencia === "sin_rastro"
-        ? "Sin rastro de pagos"
-        : "Plata en riesgo"
+  // La segunda cifra nunca repite el valor del contrato: muestra lo que de
+  // verdad distingue a un contrato de otro (ver lib/cifra-clave.ts).
+  const cifra = cifraClave(c, modo)
 
   return (
     <Link
@@ -98,17 +94,17 @@ export function ContractCard({ contract: c, modo, patrones = [] }: ContractCardP
         <div className="flex items-center gap-2 border-l border-hairline pl-2.5">
           <span
             className="flex size-8 shrink-0 items-center justify-center rounded-lg text-white"
-            style={{ backgroundColor: c.plata_en_riesgo ? color : "var(--p3)" }}
+            style={{ backgroundColor: cifra.destacar ? color : "var(--p3)" }}
           >
             <AlertTriangle className="size-4" aria-hidden="true" />
           </span>
           <div className="min-w-0">
-            <p className="label-eyebrow leading-none">{riesgoLabel}</p>
+            <p className="label-eyebrow leading-none">{cifra.label}</p>
             <p
               className="num truncate text-sm font-semibold tabular-nums"
-              style={{ color: c.plata_en_riesgo ? color : "var(--muted-foreground)" }}
+              style={{ color: cifra.destacar ? color : "var(--muted-foreground)" }}
             >
-              {c.plata_en_riesgo ? abbreviateCOP(c.plata_en_riesgo) : "—"}
+              {cifra.value != null ? abbreviateCOP(cifra.value) : "—"}
             </p>
           </div>
         </div>

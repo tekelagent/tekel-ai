@@ -1,5 +1,6 @@
 import type { Contract } from "@/lib/types"
 import { formatCOP, formatDateLong } from "@/lib/format"
+import { cifraClave } from "@/lib/cifra-clave"
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -10,19 +11,9 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
   )
 }
 
-/**
- * La etiqueta cambia según de dónde salga la cifra. No es cosmética: decir
- * "plata en riesgo" cuando no hay rastro de pagos afirma un hecho que el dato
- * no sostiene.
- */
-const ETIQUETA_PLATA: Record<Contract["plata_procedencia"], string> = {
-  corroborado: "Plata en riesgo · verificada contra el plan de pagos",
-  reportado: "Plata en riesgo estimada",
-  sin_rastro: "Valor total · sin rastro de pagos",
-}
-
 /** Ficha técnica del contrato: datos duros verificables. */
 export function FactsPanel({ c }: { c: Contract }) {
+  const cifra = cifraClave(c, c.vigencia === "historico" ? "historico" : "vigente")
   return (
     <section
       aria-labelledby="ficha-h"
@@ -40,34 +31,30 @@ export function FactsPanel({ c }: { c: Contract }) {
         <Row label="Valor del contrato">
           <span className="num font-semibold">{formatCOP(c.valor_contrato)}</span>
         </Row>
-        {c.plata_en_riesgo != null && (
-          <Row label={ETIQUETA_PLATA[c.plata_procedencia]}>
-            <span className="num font-semibold text-crit">{formatCOP(c.plata_en_riesgo)}</span>
-            {c.plata_procedencia === "corroborado" && (
-              <p className="mt-1 text-[11px] font-normal leading-snug text-muted-foreground">
-                Contrastado con el plan de pagos de SECOP: {c.pagos_filas}{" "}
-                {c.pagos_filas === 1 ? "factura registrada" : "facturas registradas"}
-                {c.pagos_ultima_fecha
-                  ? `, último desembolso el ${formatDateLong(c.pagos_ultima_fecha)}`
-                  : ", ninguna pagada"}
-                .
-              </p>
-            )}
-            {c.plata_procedencia === "sin_rastro" && (
-              <p className="mt-1 text-[11px] font-normal leading-snug text-muted-foreground">
-                No hay pagos reportados por la entidad ni facturas en el plan de pagos de
-                SECOP. La cifra es el valor total del contrato, no un pendiente confirmado.
-              </p>
-            )}
-          </Row>
-        )}
-        {c.pagos_en_tramite != null && c.pagos_en_tramite > 0 && (
-          <Row label="Facturado pendiente de desembolso">
-            <span className="num font-semibold">{formatCOP(c.pagos_en_tramite)}</span>
+        <Row label={cifra.label}>
+          {cifra.value != null ? (
+            <span className={`num font-semibold ${cifra.destacar ? "text-crit" : ""}`}>
+              {formatCOP(cifra.value)}
+            </span>
+          ) : (
+            <span className="text-muted-foreground">Sin cifra verificable</span>
+          )}
+          {cifra.nota && (
             <p className="mt-1 text-[11px] font-normal leading-snug text-muted-foreground">
-              Facturas aprobadas o radicadas que aún no se han pagado. Es la plata más
-              próxima a salir.
+              {cifra.nota}
             </p>
+          )}
+        </Row>
+        {/* El desembolso ya ejecutado se muestra aparte de lo que está por
+            salir: son dos decisiones distintas, detener o perseguir. */}
+        {cifra.label === "Por salir" && (c.pagos_confirmados ?? 0) > 0 && (
+          <Row label="Ya desembolsado">
+            <span className="num font-semibold">{formatCOP(c.pagos_confirmados!)}</span>
+            {c.pagos_ultima_fecha && (
+              <p className="mt-1 text-[11px] font-normal leading-snug text-muted-foreground">
+                Último pago registrado el {formatDateLong(c.pagos_ultima_fecha)}.
+              </p>
+            )}
           </Row>
         )}
         <Row label="Tipo · modalidad">

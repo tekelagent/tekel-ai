@@ -32,6 +32,7 @@ function HeroSection() {
 type Metrics = {
   contratos_vigilados: number
   plata_en_riesgo_p1: number
+  por_salir_p1: number
   contratos_criticos: number
   hallazgos: number
 }
@@ -112,7 +113,10 @@ export function DashboardView({ contracts, patronesByContract, metrics }: Dashbo
           return (b.plata_en_riesgo ?? 0) - (a.plata_en_riesgo ?? 0)
         }
         case "plata":
-          return (b.plata_en_riesgo ?? 0) - (a.plata_en_riesgo ?? 0)
+          // Por lo facturado y no pagado, no por `plata_en_riesgo`: en el 76%
+          // de los vigentes esa cifra es el valor del contrato, así que
+          // ordenar por ella era ordenar por tamaño del contrato.
+          return (b.pagos_en_tramite ?? 0) - (a.pagos_en_tramite ?? 0)
         case "score":
           return (b.risk_score ?? 0) - (a.risk_score ?? 0)
         case "valor":
@@ -134,11 +138,17 @@ export function DashboardView({ contracts, patronesByContract, metrics }: Dashbo
   }
 
   const plataLabel =
-    filters.modo === "historico" ? "Valor pagado bajo revisión" : "Plata en riesgo (P1)"
+    filters.modo === "historico" ? "Valor pagado bajo revisión" : "Por salir en P1"
+
+  // En vigente se muestra lo facturado y aprobado que aún no ha salido, no la
+  // suma de los valores de contrato: es la cifra que tiene una factura detrás
+  // y que todavía se puede detener.
+  const plataValor =
+    filters.modo === "historico" ? metrics.plata_en_riesgo_p1 : metrics.por_salir_p1
 
   const metricList = [
     { label: "Contratos vigilados", value: formatNumber(metrics.contratos_vigilados) },
-    { label: plataLabel, value: abbreviateCOP(metrics.plata_en_riesgo_p1), tone: "crit" as const },
+    { label: plataLabel, value: abbreviateCOP(plataValor), tone: "crit" as const },
     { label: "Contratos críticos", value: formatNumber(metrics.contratos_criticos), tone: "crit" as const },
     { label: "Hallazgos", value: formatNumber(metrics.hallazgos) },
   ]

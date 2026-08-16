@@ -164,3 +164,4 @@ data/documentos/
 # material de trabajo de v0 (no es codigo final)
 v0-design/
 .env*
+data/probe-captcha.json

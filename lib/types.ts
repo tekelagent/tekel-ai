@@ -29,6 +29,8 @@ export type Contract = {
   plata_procedencia: "corroborado" | "reportado" | "sin_rastro"
   /** Facturado ya aprobado o radicado que todavía no ha salido. */
   pagos_en_tramite: number | null
+  /** Desembolsado con fecha real de pago, según el plan de pagos. */
+  pagos_confirmados: number | null
   /** Facturas en el plan de pagos de SECOP. 0 o null = sin rastro. */
   pagos_filas: number | null
   /** Fecha del último desembolso corroborado. */

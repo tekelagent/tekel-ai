@@ -18,20 +18,25 @@ export async function GET() {
       sb.from("contracts").select("id", { count: "exact", head: true }).neq("vigencia", "otro"),
       sb.from("contracts").select("id", { count: "exact", head: true }).eq("risk_level", "critico"),
       sb.from("findings").select("id", { count: "exact", head: true }),
-      sb.from("contracts").select("plata_en_riesgo").eq("prioridad", "P1"),
+      sb.from("contracts").select("plata_en_riesgo,pagos_en_tramite").eq("prioridad", "P1"),
     ]);
 
-    const plataP1 = (p1.data ?? []).reduce(
-      (a, c) => a + Number((c as { plata_en_riesgo: number | null }).plata_en_riesgo ?? 0),
-      0,
-    );
+    type FilaP1 = { plata_en_riesgo: number | null; pagos_en_tramite: number | null };
+    const filas = (p1.data ?? []) as FilaP1[];
+
+    const plataP1 = filas.reduce((a, c) => a + Number(c.plata_en_riesgo ?? 0), 0);
+    // Facturado aprobado o radicado, sin pagar. Es la cifra defendible: no la
+    // suma de valores de contrato, sino plata con una factura detrás que
+    // todavía no ha salido y que por tanto se puede detener.
+    const porSalirP1 = filas.reduce((a, c) => a + Number(c.pagos_en_tramite ?? 0), 0);
 
     return NextResponse.json({
       contratos_vigilados: vigilados.count ?? 0,
       contratos_criticos: criticos.count ?? 0,
       hallazgos: hallazgos.count ?? 0,
       plata_en_riesgo_p1: plataP1,
-      contratos_p1: (p1.data ?? []).length,
+      por_salir_p1: porSalirP1,
+      contratos_p1: filas.length,
     });
   } catch (err) {
     return NextResponse.json({ error: (err as Error).message }, { status: 500 });

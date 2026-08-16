@@ -2,6 +2,7 @@ import Link from "next/link"
 import { ExternalLink } from "lucide-react"
 import type { Contract } from "@/lib/types"
 import { formatCOP, formatDateLong } from "@/lib/format"
+import { cifraClave } from "@/lib/cifra-clave"
 import { buttonVariants } from "@/components/ui/button"
 
 function DataItem({ label, value, tone }: { label: string; value: string; tone?: "crit" }) {
@@ -25,6 +26,7 @@ export function ContractHeader({
   contract: Contract
   analizadoEnVivo?: string
 }) {
+  const cifra = cifraClave(c, c.vigencia === "historico" ? "historico" : "vigente")
   return (
     <div className="card-soft p-6 md:p-7">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -68,15 +70,11 @@ export function ContractHeader({
       <div className="mt-6 grid grid-cols-2 gap-x-6 gap-y-4 border-t border-hairline pt-5 sm:grid-cols-3 lg:grid-cols-4">
         <DataItem label="Valor del contrato" value={formatCOP(c.valor_contrato)} />
         <DataItem
-          // Sin rastro de pagos la cifra es el valor total del contrato, no un
-          // pendiente confirmado. Decirlo evita afirmar un hecho sin sustento.
-          label={
-            c.plata_procedencia === "sin_rastro" ? "Valor sin rastro de pagos" : "Plata en riesgo"
-          }
-          value={c.plata_en_riesgo != null ? formatCOP(c.plata_en_riesgo) : "—"}
-          tone={
-            c.plata_en_riesgo != null && c.plata_procedencia !== "sin_rastro" ? "crit" : undefined
-          }
+          // Nunca repite el valor del contrato: muestra lo que distingue a
+          // este contrato de los demás (ver lib/cifra-clave.ts).
+          label={cifra.label}
+          value={cifra.value != null ? formatCOP(cifra.value) : "—"}
+          tone={cifra.destacar ? "crit" : undefined}
         />
         <DataItem label="Estado" value={c.estado_contrato} />
         <DataItem label="Modalidad" value={c.modalidad} />

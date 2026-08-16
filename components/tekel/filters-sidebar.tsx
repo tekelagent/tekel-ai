@@ -34,7 +34,7 @@ const NIVELES: { key: string; label: string }[] = [
 
 const ORDENES: { key: Filters["orden"]; label: string }[] = [
   { key: "prioridad", label: "Prioridad (P1 primero)" },
-  { key: "plata", label: "Plata en riesgo" },
+  { key: "plata", label: "Plata por salir" },
   { key: "score", label: "Score de riesgo" },
   { key: "fecha", label: "Fecha de firma" },
   { key: "valor", label: "Valor del contrato" },

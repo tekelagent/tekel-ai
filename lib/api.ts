@@ -12,6 +12,8 @@ export type MetricasCorpus = {
   contratos_criticos: number;
   hallazgos: number;
   plata_en_riesgo_p1: number;
+  /** Facturado aprobado o radicado sin pagar, en los P1. Plata detenible. */
+  por_salir_p1: number;
   contratos_p1: number;
 };
 
@@ -42,6 +44,7 @@ export function aContract(row: Record<string, unknown>): Contract {
     valor_verificar: Boolean(row.valor_verificar),
     plata_procedencia: procedenciaPlata(row),
     pagos_en_tramite: row.pagos_en_tramite == null ? null : n(row.pagos_en_tramite),
+    pagos_confirmados: row.pagos_confirmados == null ? null : n(row.pagos_confirmados),
     pagos_filas: row.pagos_filas == null ? null : n(row.pagos_filas),
     pagos_ultima_fecha: row.pagos_ultima_fecha == null ? null : s(row.pagos_ultima_fecha),
   };
