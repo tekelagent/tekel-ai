@@ -26,7 +26,9 @@ type SiteHeaderProps = {
 export function SiteHeader({ active = "panel", corpus }: SiteHeaderProps) {
   const nav = [
     { key: "panel", label: "Panel", href: "/" },
-    { key: "ranking", label: "Ranking", href: "/ranking" },
+    // El ranking de contratistas se retira: agrega por proveedor sobre un corpus
+  // de un solo departamento, así que las cifras no sostienen la lectura que
+  // sugiere. Vuelve cuando haya cobertura nacional.
     { key: "metodologia", label: "Metodología", href: "/metodologia" },
   ] as const
 

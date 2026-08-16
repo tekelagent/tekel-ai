@@ -18,6 +18,10 @@ import { createForensicProvider, type PerfilForense } from "../providers/forensi
 import { OpenRouterProvider } from "../providers/llm";
 import { config } from "../config";
 import { focoOf, pointsOf, severityOf } from "../rules/catalog";
+import { hallazgosDeForense } from "./forense-findings";
+import { triar } from "../rules/priority";
+import { todayUTC } from "../rules/runner";
+import type { ContractRow, Finding } from "../rules/types";
 
 export type Stage = "forense" | "docs" | "pliego";
 export type Status = "queued" | "running" | "needs_upload" | "done" | "error";
@@ -188,6 +192,36 @@ async function pasoForense(idContrato: string) {
     onLog: (m) => lineas.push(m),
   });
 
+  // La verificación no solo se muestra: se convierte en hallazgos con puntos.
+  // Sin esto la Capa C sería informativa y no movería la priorización.
+  const { data: cFull } = await sb
+    .from("contracts")
+    .select("id,proveedor,fecha_firma")
+    .eq("id_contrato", idContrato)
+    .maybeSingle();
+  const cf = cFull as unknown as {
+    id: string;
+    proveedor: string | null;
+    fecha_firma: string | null;
+  } | null;
+  const hallazgos = cf
+    ? hallazgosDeForense(
+        { id: cf.id, proveedor: cf.proveedor, fecha_firma: cf.fecha_firma },
+        perfil,
+      )
+    : [];
+
+  if (hallazgos.length) {
+    await sb
+      .from("findings")
+      .upsert(hallazgos, { onConflict: "contract_id,pattern_code,source" });
+    lineas.push(
+      `${hallazgos.length} hallazgo(s) de registros oficiales: ` +
+        `${hallazgos.map((h) => h.pattern_code).join(", ")}.`,
+    );
+    await recalcularScore(idContrato);
+  }
+
   lineas.push(
     `Forense completo: ${perfil.llamadas} consultas` +
       (perfil.omitidos.length ? `, ${perfil.omitidos.length} omitidas` : "") +
@@ -199,6 +233,39 @@ async function pasoForense(idContrato: string) {
     .update({ forensic: perfil as unknown as Record<string, unknown>, stage: "forense" })
     .eq("id_contrato_ref", idContrato);
   await anotar(idContrato, lineas);
+}
+
+/** Recalcula score, nivel y triaje sumando TODOS los hallazgos del contrato. */
+async function recalcularScore(idContrato: string) {
+  const sb = supabaseServer();
+  const { data: raw } = await sb
+    .from("contracts")
+    .select(
+      "id,id_contrato,vigencia,valor_contrato,valor_pagado,valor_pendiente_ejecucion," +
+        "fecha_firma,fecha_fin,valor_verificar",
+    )
+    .eq("id_contrato", idContrato)
+    .maybeSingle();
+  if (!raw) return;
+  const c = raw as unknown as ContractRow;
+
+  const { data: fs } = await sb
+    .from("findings")
+    .select("pattern_code,points,confianza,foco,severity,source,detail,evidence,contract_id")
+    .eq("contract_id", c.id);
+
+  const t = triar(c, (fs ?? []) as unknown as Finding[], { today: todayUTC() });
+
+  await sb
+    .from("contracts")
+    .update({
+      risk_score: t.risk_score,
+      risk_level: t.risk_level,
+      prioridad: t.prioridad,
+      plata_en_riesgo: t.plata_en_riesgo,
+      porque_ahora: t.porque_ahora,
+    })
+    .eq("id", c.id);
 }
 
 // ── Paso 2: documentos ──────────────────────────────────────────────────────
