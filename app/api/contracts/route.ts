@@ -91,10 +91,13 @@ export async function GET(req: Request) {
     const clave = p.get("orden") ?? "prioridad";
     if (clave === "prioridad") {
       // Orden por defecto de la bandeja: P1 antes que P2 y P3, y dentro de cada
-      // grupo lo de mayor plata primero. Ordenar solo por plata pone arriba
-      // contratos enormes sin hallazgos, que no es lo que hay que revisar hoy.
+      // grupo lo que tiene más plata a punto de salir. Se ordena por la misma
+      // cifra que se muestra: ordenar por `plata_en_riesgo` ponía arriba los
+      // contratos más grandes, que en su mayoría no tienen plan de pagos, así
+      // que la cabecera de la lista quedaba llena de guiones.
       q = q
         .order("prioridad", { ascending: true, nullsFirst: false })
+        .order("pagos_en_tramite", { ascending: false, nullsFirst: false })
         .order("plata_en_riesgo", { ascending: false, nullsFirst: false });
     } else {
       const orden = ORDENES[clave] ?? ORDENES.plata;

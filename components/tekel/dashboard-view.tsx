@@ -110,6 +110,11 @@ export function DashboardView({ contracts, patronesByContract, metrics }: Dashbo
           const ra = RANGO_PRIORIDAD[a.prioridad ?? ""] ?? 9
           const rb = RANGO_PRIORIDAD[b.prioridad ?? ""] ?? 9
           if (ra !== rb) return ra - rb
+          // Dentro de la prioridad, primero lo que tiene plata por salir: es
+          // la misma cifra que muestra la tarjeta.
+          const ta = a.pagos_en_tramite ?? 0
+          const tb = b.pagos_en_tramite ?? 0
+          if (ta !== tb) return tb - ta
           return (b.plata_en_riesgo ?? 0) - (a.plata_en_riesgo ?? 0)
         }
         case "plata":
