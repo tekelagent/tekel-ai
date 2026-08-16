@@ -233,44 +233,33 @@ async function loadOtherLayerFindings(): Promise<Map<string, Finding[]>> {
   return porContrato;
 }
 
-/** Escribe los hallazgos de un lote y borra los de `rules` que dejaron de aplicar. */
-async function writeFindings(findings: Finding[], contractIds: string[]) {
-  if (findings.length) {
-    await conReintentos("upsert findings", async () => {
-      const { error } = await supabase
-        .from("findings")
-        .upsert(findings, { onConflict: "contract_id,pattern_code,source" });
-      if (error) throw new Error(`Supabase upsert findings: ${error.message}`);
-    });
-  }
+/** Escribe los hallazgos de un lote. La limpieza va antes, de una sola vez. */
+async function writeFindings(findings: Finding[]) {
+  if (!findings.length) return;
+  await conReintentos("upsert findings", async () => {
+    const { error } = await supabase
+      .from("findings")
+      .upsert(findings, { onConflict: "contract_id,pattern_code,source" });
+    if (error) throw new Error(`Supabase upsert findings: ${error.message}`);
+  });
+}
 
-  // Limpieza de hallazgos obsoletos: sin esto el script sería idempotente solo
-  // hacia arriba, y un contrato que dejó de disparar arrastraría el hallazgo.
-  const emitidosPorCodigo = new Map<string, Set<string>>();
-  for (const f of findings) {
-    const set = emitidosPorCodigo.get(f.pattern_code) ?? new Set<string>();
-    set.add(f.contract_id);
-    emitidosPorCodigo.set(f.pattern_code, set);
-  }
-
-  for (const rule of RULES) {
-    const emitidos = emitidosPorCodigo.get(rule.code) ?? new Set<string>();
-    const sinHallazgo = contractIds.filter((id) => !emitidos.has(id));
-    if (!sinHallazgo.length) continue;
-    // Se trocea: cientos de UUID en la query string revientan la petición.
-    for (let i = 0; i < sinHallazgo.length; i += 100) {
-      const trozo = sinHallazgo.slice(i, i + 100);
-      await conReintentos("delete findings", async () => {
-        const { error } = await supabase
-          .from("findings")
-          .delete()
-          .eq("source", "rules")
-          .eq("pattern_code", rule.code)
-          .in("contract_id", trozo);
-        if (error) throw new Error(`Supabase delete findings: ${error.message}`);
-      });
-    }
-  }
+/**
+ * Borra de una vez todos los hallazgos de esta capa antes de reescribirlos.
+ *
+ * La alternativa —comparar por lote qué reglas dejaron de disparar y borrar
+ * esos hallazgos— emitía unas 2.600 peticiones de borrado por corrida y la red
+ * no lo aguantaba. Un solo DELETE deja el mismo estado final: los hallazgos
+ * vigentes se reinsertan a continuación, y los que dejaron de aplicar
+ * simplemente no vuelven.
+ *
+ * Los hallazgos de `llm` y `croma` no se tocan.
+ */
+async function limpiarHallazgosDeReglas() {
+  await conReintentos("delete findings de rules", async () => {
+    const { error } = await supabase.from("findings").delete().eq("source", "rules");
+    if (error) throw new Error(`Supabase delete findings: ${error.message}`);
+  });
 }
 
 type FilaTriaje = {
@@ -322,6 +311,8 @@ async function main() {
   console.log(`  ${ctx.valorPorEntidad24m.size} entidades con valor en ventana de 24 meses`);
 
   const otrasCapas = DRY ? new Map<string, Finding[]>() : await loadOtherLayerFindings();
+
+  if (!DRY) await limpiarHallazgosDeReglas();
   console.log(`  ${otrasCapas.size} contratos con hallazgos de otras capas\n`);
 
   const porPatron = new Map<string, number>();
@@ -367,7 +358,7 @@ async function main() {
     totalFindings += findingsLote.length;
 
     if (!DRY) {
-      await writeFindings(findingsLote, lote.map((c) => c.id));
+      await writeFindings(findingsLote);
       await writeTriaje(triajeLote);
     }
 

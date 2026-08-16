@@ -10,7 +10,12 @@ import { z } from "zod";
 
 const schema = z.object({
   TEKEL_LLM_BULK_MODEL: z.string().min(1).default("deepseek/deepseek-v3.2"),
-  TEKEL_LLM_DEEP_MODEL: z.string().min(1).optional(),
+  /**
+   * Capa C. Fijado tras el bake-off: 3.7-plus y 3.8-max empataron en salida y
+   * latencia sobre un pliego real, y 3.7-plus cuesta 5,6 veces menos. Ambos
+   * tienen 1M de contexto, así que un pliego completo cabe entero.
+   */
+  TEKEL_LLM_DEEP_MODEL: z.string().min(1).default("qwen/qwen3.7-plus"),
   FORENSIC_PROVIDER: z.enum(["croma", "mock"]).default("croma"),
 });
 

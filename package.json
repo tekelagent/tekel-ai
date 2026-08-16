@@ -15,7 +15,9 @@
                     "preview-expediente":  "tsx scripts/preview-expediente.ts",
                     "probe-croma":  "tsx scripts/probe-croma.ts",
                     "load-paco":  "tsx scripts/load-paco.ts",
-                    "ingest-processes":  "tsx scripts/ingest-processes.ts"
+                    "ingest-processes":  "tsx scripts/ingest-processes.ts",
+                    "probe-docs":  "tsx scripts/probe-docs.ts",
+                    "bakeoff-pliego":  "tsx scripts/bakeoff-pliego.ts"
                 },
     "dependencies":  {
                          "@supabase/supabase-js":  "^2.112.3",
@@ -31,9 +33,11 @@
                             "@types/react-dom":  "^19",
                             "eslint":  "^9",
                             "eslint-config-next":  "16.3.1",
+                            "playwright":  "^1.62.1",
                             "tailwindcss":  "^4",
                             "tsx":  "^4.23.12",
                             "typescript":  "^5",
+                            "unpdf":  "^1.8.1",
                             "vitest":  "^4.1.10"
                         },
     "packageManager":  "pnpm@11.22.0"
