@@ -20,6 +20,8 @@
 export const CROMA_BASE = "https://api.croma.run";
 const UA = "TekelAgent/0.1 (auditoria de contratacion publica; +https://github.com/tekelagent/tekel-ai)";
 const TIMEOUT_MS = 45_000;
+/** El precómputo puede esperar más: nadie está mirando una pantalla. */
+const TIMEOUT_BACKGROUND_MS = 90_000;
 
 /** Bajo este umbral de cuota restante solo se atiende lo urgente. */
 export const RATE_LIMIT_RESERVA = 50;
@@ -48,11 +50,17 @@ export type PerfilForense = {
   rate_remaining_final: number | null;
 };
 
+/**
+ * `interactivo` corre mientras un usuario mira el log: se salta los endpoints
+ * lentos. `background` es el precómputo, donde nadie espera.
+ */
+export type ModoForense = "interactivo" | "background";
+
 export interface ForensicProvider {
   readonly name: string;
   perfilDeContratista(
     documento: string,
-    opts?: { esPrioritario?: boolean; onLog?: (msg: string) => void },
+    opts?: { esPrioritario?: boolean; modo?: ModoForense; onLog?: (msg: string) => void },
   ): Promise<PerfilForense>;
 }
 
@@ -68,9 +76,9 @@ export class CromaProvider implements ForensicProvider {
     this.base = (opts.base ?? CROMA_BASE).replace(/\/$/, "");
   }
 
-  private async post<T>(path: string, body: unknown): Promise<CromaRespuesta<T>> {
+  private async post<T>(path: string, body: unknown, timeoutMs = TIMEOUT_MS): Promise<CromaRespuesta<T>> {
     const ctrl = new AbortController();
-    const t = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
+    const t = setTimeout(() => ctrl.abort(), timeoutMs);
     const t0 = Date.now();
     try {
       const res = await fetch(`${this.base}${path}`, {
@@ -102,7 +110,10 @@ export class CromaProvider implements ForensicProvider {
         error: res.ok ? null : (json?.error?.message ?? texto.slice(0, 200)),
       };
     } catch (err) {
-      const msg = (err as Error).name === "AbortError" ? `timeout tras ${TIMEOUT_MS / 1000}s` : (err as Error).message;
+      const msg =
+        (err as Error).name === "AbortError"
+          ? `timeout tras ${timeoutMs / 1000}s`
+          : (err as Error).message;
       return { ok: false, status: 0, data: null, ms: Date.now() - t0, rateRemaining: null, error: msg };
     } finally {
       clearTimeout(t);
@@ -115,9 +126,11 @@ export class CromaProvider implements ForensicProvider {
    */
   async perfilDeContratista(
     documento: string,
-    opts: { esPrioritario?: boolean; onLog?: (msg: string) => void } = {},
+    opts: { esPrioritario?: boolean; modo?: ModoForense; onLog?: (msg: string) => void } = {},
   ): Promise<PerfilForense> {
     const log = opts.onLog ?? (() => {});
+    const modo: ModoForense = opts.modo ?? "interactivo";
+    const timeout = modo === "background" ? TIMEOUT_BACKGROUND_MS : TIMEOUT_MS;
     const perfil: PerfilForense = {
       rues: null,
       contraloria: null,
@@ -130,15 +143,32 @@ export class CromaProvider implements ForensicProvider {
       rate_remaining_final: null,
     };
 
-    const pasos: Array<{ clave: keyof PerfilForense; path: string; etiqueta: string }> = [
-      { clave: "rues", path: "/co/rues/entity-by-nit/v1", etiqueta: "RUES (existencia y representación)" },
-      { clave: "contraloria", path: "/co/contraloria/fiscal-records/v1", etiqueta: "Contraloría (responsabilidad fiscal)" },
-      { clave: "procuraduria", path: "/co/procuraduria/disciplinary-records/v1", etiqueta: "Procuraduría (antecedentes)" },
-      { clave: "contaduria", path: "/co/contaduria/state-delinquent-debtors/v1", etiqueta: "Contaduría (deudores morosos)" },
-      { clave: "contratos_proveedor", path: "/co/secop/contracts-by-provider/v1", etiqueta: "SECOP (contratos del proveedor)" },
+    const pasos: Array<{
+      clave: keyof PerfilForense;
+      path: string;
+      etiqueta: string;
+      /** false = no corre en modo interactivo por ser demasiado lento. */
+      interactivo: boolean;
+    }> = [
+      { clave: "rues", path: "/co/rues/entity-by-nit/v1", etiqueta: "RUES (existencia y representación)", interactivo: true },
+      { clave: "contraloria", path: "/co/contraloria/fiscal-records/v1", etiqueta: "Contraloría (responsabilidad fiscal)", interactivo: true },
+      { clave: "procuraduria", path: "/co/procuraduria/disciplinary-records/v1", etiqueta: "Procuraduría (antecedentes)", interactivo: true },
+      // Contaduría agota los 45 s de forma consistente: en una pantalla eso es
+      // espera muerta. Solo corre en el precómputo, con 90 s de margen.
+      { clave: "contaduria", path: "/co/contaduria/state-delinquent-debtors/v1", etiqueta: "Contaduría (deudores morosos)", interactivo: false },
+      { clave: "contratos_proveedor", path: "/co/secop/contracts-by-provider/v1", etiqueta: "SECOP (contratos del proveedor)", interactivo: true },
     ];
 
     for (const paso of pasos) {
+      if (modo === "interactivo" && !paso.interactivo) {
+        perfil.omitidos.push({
+          endpoint: paso.path,
+          motivo: "endpoint lento; se consulta en el precómputo, no en el análisis interactivo",
+        });
+        log(`Omitido ${paso.etiqueta}: se consulta en segundo plano para no hacerte esperar.`);
+        continue;
+      }
+
       // Reserva de cuota: por debajo del umbral solo pasa lo prioritario.
       if (
         perfil.rate_remaining_final !== null &&
@@ -154,7 +184,7 @@ export class CromaProvider implements ForensicProvider {
       }
 
       log(`Consultando ${paso.etiqueta}…`);
-      const r = await this.post(paso.path, { document_number: documento });
+      const r = await this.post(paso.path, { document_number: documento }, timeout);
       perfil.llamadas += 1;
       if (r.rateRemaining !== null) perfil.rate_remaining_final = r.rateRemaining;
 
