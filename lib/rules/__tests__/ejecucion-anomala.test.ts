@@ -54,8 +54,12 @@ describe("EJECUCION_ANOMALA — condición (b): pendiente de ejecución", () => 
 });
 
 describe("EJECUCION_ANOMALA — condición (a): terminado sin liquidar", () => {
+  /** La condición (a) solo aplica donde la liquidación es exigible. */
+  const deObra = (over: Partial<ContractRow> = {}) =>
+    historico({ tipo_de_contrato: "Obra", ...over });
+
   it("dispara si terminó hace más de 6 meses y sigue sin liquidar", () => {
-    const f = run(historico({ raw: { "liquidaci_n": "No" }, fecha_fin: "2025-01-15" }));
+    const f = run(deObra({ raw: { "liquidaci_n": "No" }, fecha_fin: "2025-01-15" }));
     expect(f).not.toBeNull();
     expect(f!.evidence.condicion).toBe("a");
     expect(f!.evidence.liquidado).toBe(false);
@@ -63,23 +67,54 @@ describe("EJECUCION_ANOMALA — condición (a): terminado sin liquidar", () => {
   });
 
   it("no dispara si ya está liquidado", () => {
-    expect(run(historico({ raw: { "liquidaci_n": "Si" } }))).toBeNull();
+    expect(run(deObra({ raw: { "liquidaci_n": "Si" } }))).toBeNull();
   });
 
   it("no dispara si terminó hace menos de 6 meses", () => {
-    expect(
-      run(historico({ raw: { "liquidaci_n": "No" }, fecha_fin: "2026-07-01" })),
-    ).toBeNull();
+    expect(run(deObra({ raw: { "liquidaci_n": "No" }, fecha_fin: "2026-07-01" }))).toBeNull();
   });
 
   it("se abstiene si el campo de liquidación no es interpretable", () => {
     expect(
-      run(historico({ raw: { "liquidaci_n": "No Definido" }, fecha_fin: "2024-01-01" })),
+      run(deObra({ raw: { "liquidaci_n": "No Definido" }, fecha_fin: "2024-01-01" })),
     ).toBeNull();
   });
 
   it("se abstiene si no hay fila cruda", () => {
-    expect(run(historico({ raw: null, fecha_fin: "2024-01-01" }))).toBeNull();
+    expect(run(deObra({ raw: null, fecha_fin: "2024-01-01" }))).toBeNull();
+  });
+});
+
+describe("EJECUCION_ANOMALA v2 — la liquidación no es exigible en todo contrato", () => {
+  it.each(["Obra", "Suministro", "Interventoría", "Consultoría", "Concesión"])(
+    "en %s la condición (a) sí aplica",
+    (tipo) => {
+      const f = run(
+        historico({ tipo_de_contrato: tipo, raw: { "liquidaci_n": "No" }, fecha_fin: "2025-01-15" }),
+      );
+      expect(f).not.toBeNull();
+      expect(f!.evidence.condicion).toBe("a");
+    },
+  );
+
+  it("en prestación de servicios se abstiene en vez de señalar un incumplimiento inexistente", () => {
+    const c = historico({
+      tipo_de_contrato: "Prestación de servicios",
+      raw: { "liquidaci_n": "No" },
+      fecha_fin: "2025-01-15",
+    });
+    expect(run(c)).toBeNull();
+  });
+
+  it("pero las condiciones (b) y (c) siguen aplicando en cualquier tipo", () => {
+    const b = run(
+      historico({ tipo_de_contrato: "Prestación de servicios", valor_pendiente_ejecucion: 150_000_000 }),
+    );
+    expect(b!.evidence.condicion).toBe("b");
+    const cc = run(
+      historico({ tipo_de_contrato: "Prestación de servicios", estado_contrato: "Cedido" }),
+    );
+    expect(cc!.evidence.condicion).toBe("c");
   });
 });
 

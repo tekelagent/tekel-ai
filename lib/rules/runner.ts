@@ -28,6 +28,7 @@ import type {
   Finding,
   PacoIndex,
   ParSupervisor,
+  ProcesoRow,
   RuleContext,
 } from "./types";
 
@@ -152,7 +153,11 @@ export function buildContext(
   contracts: readonly ContractRow[],
   today: string,
   pisoMaterialidad: number = PISO_MATERIALIDAD_COP,
-  opts: { paco?: PacoIndex; mismoSupervisorMin?: number } = {},
+  opts: {
+    paco?: PacoIndex;
+    procesos?: Map<string, ProcesoRow>;
+    mismoSupervisorMin?: number;
+  } = {},
 ): RuleContext {
   return {
     peersByEntitySupplier: buildPeers(contracts),
@@ -160,6 +165,7 @@ export function buildContext(
     valorPorEntidad24m: buildValorPorEntidad(contracts, today),
     supervisorProveedor: buildSupervisorProveedor(contracts),
     paco: opts.paco ?? pacoVacio(),
+    procesos: opts.procesos ?? new Map(),
     mismoSupervisorMin: opts.mismoSupervisorMin ?? MISMO_SUPERVISOR_MIN,
     today,
     pisoMaterialidad,

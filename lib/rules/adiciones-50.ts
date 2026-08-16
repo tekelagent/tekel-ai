@@ -32,6 +32,50 @@ export const adiciones50: Rule = {
 
     const { fraccionMinima } = THRESHOLDS.ADICIONES_50;
 
+    // ── v2: medición EXACTA cuando el proceso publica el valor adjudicado ──
+    // Ahí sí se compara valor contra valor, que es lo que limita la norma.
+    const proceso = c.proceso_de_compra ? ctx.procesos.get(c.proceso_de_compra) : undefined;
+    const inicial =
+      proceso && isNum(proceso.valor_adjudicacion) && proceso.valor_adjudicacion > 0
+        ? proceso.valor_adjudicacion
+        : null;
+
+    if (inicial !== null && isNum(c.valor_contrato) && c.valor_contrato > inicial) {
+      const adicion = c.valor_contrato - inicial;
+      const fraccion = adicion / inicial;
+      if (fraccion >= fraccionMinima) {
+        return makeFinding({
+          contract: c,
+          code: CODE,
+          // Valor contra valor: es la magnitud que la norma limita.
+          confianza: "alta",
+          detail:
+            `El contrato se adjudicó por ${formatCOP(inicial)} y hoy figura por ` +
+            `${formatCOP(c.valor_contrato)}: una adición de ${formatCOP(adicion)}, el ` +
+            `${formatPct(fraccion)} del valor inicial. La ley limita la adición al 50% ` +
+            `de ese valor inicial. Criterio: ${citaNormativa(CODE)}.`,
+          evidence: {
+            aproximacion: false,
+            magnitud_medida: "valor",
+            valor_adjudicado_inicial: inicial,
+            valor_contrato_actual: c.valor_contrato,
+            valor_adicionado: adicion,
+            fraccion_adicion: Number(fraccion.toFixed(4)),
+            fraccion_minima_exigida: fraccionMinima,
+            // La norma mide en SMMLV; en pesos corrientes es una aproximación
+            // aceptable en contratos de corta duración (METODOLOGIA §3).
+            comparacion_en_pesos_corrientes: true,
+            proceso_de_compra: c.proceso_de_compra,
+            fuente: "SECOP II — Procesos de Contratación (p6dx-8zbt)",
+          },
+        });
+      }
+      // Con valor inicial conocido y adición por debajo del 50%, no hay
+      // hallazgo: la medición exacta manda sobre el proxy de tiempo.
+      return null;
+    }
+
+    // ── v1: sin valor inicial publicado, proxy por prórroga en tiempo ──
     if (!isNum(c.dias_adicionados) || c.dias_adicionados <= 0) return null;
     if (!c.fecha_inicio || !c.fecha_fin) return null;
 

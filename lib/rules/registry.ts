@@ -14,6 +14,7 @@ import { desequilibrioPagos } from "./desequilibrio-pagos";
 import { diciembre } from "./diciembre";
 import { ejecucionAnomala } from "./ejecucion-anomala";
 import { fraccionamiento } from "./fraccionamiento";
+import { licitanteUnico } from "./licitante-unico";
 import { pagoAdelantadoRiesgo } from "./pago-adelantado-riesgo";
 import { valorAtipico } from "./valor-atipico";
 import {
@@ -35,6 +36,8 @@ export const RULES: readonly Rule[] = [
   concentracionProveedor,
   pagoAdelantadoRiesgo,
   diciembre,
+  // Sobre el dataset de procesos
+  licitanteUnico,
   // Batch forense contra snapshots PACO
   inhabilidadRepLegal,
   sancionesPrevias,
@@ -53,6 +56,7 @@ export {
   ejecucionAnomala,
   fraccionamiento,
   inhabilidadRepLegal,
+  licitanteUnico,
   mismoSupervisor,
   pagoAdelantadoRiesgo,
   sancionesPrevias,

@@ -20,6 +20,8 @@ export type { Foco };
 export type ContractRow = {
   id: string;
   id_contrato: string;
+  /** Clave de join con `processes.portafolio_id` (CO1.BDOS.*). */
+  proceso_de_compra: string | null;
   nombre_entidad: string | null;
   nit_entidad: string | null;
   departamento: string | null;
@@ -142,6 +144,23 @@ export type PacoIndex = {
   obras: Map<string, PacoObra[]>;
 };
 
+/**
+ * Fila de `processes`, acotada a lo que las reglas leen. Se une por
+ * `contracts.proceso_de_compra = processes.portafolio_id`.
+ */
+export type ProcesoRow = {
+  portafolio_id: string;
+  modalidad: string | null;
+  precio_base: number | null;
+  valor_adjudicacion: number | null;
+  adjudicado: boolean | null;
+  respuestas: number | null;
+  proveedores_unicos: number | null;
+  proveedores_invitados: number | null;
+  fecha_publicacion: string | null;
+  fecha_publicacion_fase3: string | null;
+};
+
 /** Agregado por par (supervisor, proveedor) para MISMO_SUPERVISOR. */
 export type ParSupervisor = {
   contratos: number;
@@ -167,6 +186,8 @@ export type RuleContext = {
   pisoMaterialidad: number;
   /** Snapshots PACO indexados por documento. Vacío si no se cargaron. */
   paco: PacoIndex;
+  /** Procesos por `portafolio_id`. Vacío si no se ingestaron. */
+  procesos: Map<string, ProcesoRow>;
   /** Pares (cédula supervisor|documento proveedor) → agregado. */
   supervisorProveedor: Map<string, ParSupervisor>;
   /** Umbral configurable de MISMO_SUPERVISOR (default 4). */

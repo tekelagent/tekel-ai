@@ -23,6 +23,19 @@ import type { Confianza, ContractRow, Finding, Rule, RuleContext } from "./types
 
 const CODE = "EJECUCION_ANOMALA" as const;
 
+/**
+ * Tipos de contrato donde la liquidación es exigible: los de tracto sucesivo,
+ * los que requieren obra o los que se ejecutan por etapas (Ley 80 art. 60 /
+ * Ley 1150 art. 11). En un contrato de ejecución instantánea no lo es, así que
+ * "terminado sin liquidar" no señala nada allí.
+ */
+const LIQUIDACION_EXIGIBLE =
+  /obra|suministro|interventor|consultor|concesi|arrendamiento|mantenimiento|tracto/i;
+
+function liquidacionExigible(c: ContractRow): boolean {
+  return LIQUIDACION_EXIGIBLE.test(c.tipo_de_contrato ?? "");
+}
+
 /** Lee la bandera de liquidación de la fila cruda; no está mapeada a columna. */
 function liquidado(c: ContractRow): boolean | null {
   const v = c.raw?.["liquidaci_n"];
@@ -83,6 +96,13 @@ export const ejecucionAnomala: Rule = {
       evidence.valor_pendiente_ejecucion = c.valor_pendiente_ejecucion;
       evidence.fraccion_pendiente = Number(frac.toFixed(4));
       evidence.fraccion_minima_exigida = fraccionPendienteMinima;
+    } else if (!liquidacionExigible(c)) {
+      // La condición (a) solo aplica donde la liquidación es exigible. En
+      // prestación de servicios de ejecución instantánea no lo es, así que la
+      // regla se abstiene en vez de señalar un incumplimiento inexistente.
+      evidence.condicion_a_no_aplica = true;
+      evidence.motivo_no_aplica =
+        `La liquidación no es exigible en contratos de tipo "${c.tipo_de_contrato}"`;
     } else {
       // (a) terminado hace más de 6 meses y sin liquidar.
       const liq = liquidado(c);

@@ -16,6 +16,7 @@ export function contract(overrides: Partial<ContractRow> = {}): ContractRow {
   return {
     id: `00000000-0000-0000-0000-${String(seq).padStart(12, "0")}`,
     id_contrato: `CO1.PCCNTR.${seq}`,
+    proceso_de_compra: `CO1.BDOS.${seq}`,
     nombre_entidad: "ALCALDIA DE PRUEBA",
     nit_entidad: "800000000",
     departamento: "Atlántico",

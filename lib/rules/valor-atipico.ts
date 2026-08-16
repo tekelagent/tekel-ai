@@ -47,19 +47,32 @@ export const valorAtipico: Rule = {
     // METODOLOGIA exige AMBAS condiciones, no cualquiera de las dos.
     if (!superaPercentil || !superaMediana) return null;
 
+    // Comparación adicional contra el presupuesto oficial del proceso, cuando
+    // el proceso está ingestado. Es la referencia que la propia entidad fijó.
+    const proceso = c.proceso_de_compra ? ctx.procesos.get(c.proceso_de_compra) : undefined;
+    const base = proceso && isNum(proceso.precio_base) && proceso.precio_base > 0 ? proceso.precio_base : null;
+    const sobrePresupuesto = base !== null ? (c.valor_contrato - base) / base : null;
+
     return makeFinding({
       contract: c,
       code: CODE,
-      // La completitud aquí es el tamaño del grupo de comparables.
-      confianza: grupo.n >= 100 ? "alta" : "media",
+      // Con presupuesto oficial de referencia la señal deja de depender solo
+      // del tamaño del grupo de comparables.
+      confianza: base !== null || grupo.n >= 100 ? "alta" : "media",
       detail:
         `El contrato vale ${formatCOP(c.valor_contrato)}, mientras que la mediana de ` +
         `los ${grupo.n} contratos comparables —mismo tipo (${c.tipo_de_contrato}) y ` +
         `mismo departamento— es ${formatCOP(grupo.mediana)}. Es ${ratio.toFixed(1)} ` +
         `veces la mediana y supera el percentil ${percentil} del grupo ` +
-        `(${formatCOP(grupo.p95)}). Un valor atípico puede responder a un alcance ` +
-        `mayor o a condiciones particulares; se señala para que la estimación del ` +
-        `valor quede documentada. Criterio: ${citaNormativa(CODE)}.`,
+        `(${formatCOP(grupo.p95)}). ` +
+        (sobrePresupuesto !== null
+          ? `Además, el presupuesto oficial que la propia entidad publicó para este ` +
+            `proceso era ${formatCOP(base!)}: el contrato quedó ` +
+            `${(sobrePresupuesto * 100).toFixed(1)}% por encima. `
+          : "") +
+        `Un valor atípico puede responder a un alcance mayor o a condiciones ` +
+        `particulares; se señala para que la estimación del valor quede documentada. ` +
+        `Criterio: ${citaNormativa(CODE)}.`,
       evidence: {
         valor_contrato: c.valor_contrato,
         comparables_n: grupo.n,
@@ -71,6 +84,9 @@ export const valorAtipico: Rule = {
         grupo_comparables: clave,
         tipo_de_contrato: c.tipo_de_contrato,
         departamento: c.departamento,
+        precio_base_proceso: base,
+        sobre_presupuesto_pct:
+          sobrePresupuesto === null ? null : Number((sobrePresupuesto * 100).toFixed(2)),
       },
     });
   },

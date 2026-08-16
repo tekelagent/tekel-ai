@@ -27,7 +27,7 @@ import { buildContext, runRules, todayUTC } from "../lib/rules/runner";
 import { triar, type Prioridad } from "../lib/rules/priority";
 import { PISO_MATERIALIDAD_COP } from "../lib/rules/thresholds";
 import { pacoVacio } from "../lib/rules/types";
-import type { ContractRow, Finding, PacoIndex } from "../lib/rules/types";
+import type { ContractRow, Finding, PacoIndex, ProcesoRow } from "../lib/rules/types";
 
 const { values: args } = parseArgs({
   options: {
@@ -51,6 +51,7 @@ const DRY = args["dry-run"];
 const COLUMNS = [
   "id",
   "id_contrato",
+  "proceso_de_compra",
   "nombre_entidad",
   "nit_entidad",
   "departamento",
@@ -188,6 +189,26 @@ async function loadPaco(): Promise<PacoIndex> {
   return idx;
 }
 
+/** Procesos indexados por `portafolio_id`, que es la clave de join. */
+async function loadProcesos(): Promise<Map<string, ProcesoRow>> {
+  const PAGE = 1000;
+  const out = new Map<string, ProcesoRow>();
+  for (let offset = 0; ; offset += PAGE) {
+    const { data, error } = await supabase
+      .from("processes")
+      .select(
+        "portafolio_id,modalidad,precio_base,valor_adjudicacion,adjudicado,respuestas,proveedores_unicos,proveedores_invitados,fecha_publicacion,fecha_publicacion_fase3",
+      )
+      .order("portafolio_id", { ascending: true })
+      .range(offset, offset + PAGE - 1);
+    if (error) throw new Error(`Supabase select processes: ${error.message}`);
+    if (!data || data.length === 0) break;
+    for (const p of data as unknown as ProcesoRow[]) out.set(p.portafolio_id, p);
+    if (data.length < PAGE) break;
+  }
+  return out;
+}
+
 /** Hallazgos de otras capas (llm, croma), para que el score los sume también. */
 async function loadOtherLayerFindings(): Promise<Map<string, Finding[]>> {
   const PAGE = 1000;
@@ -288,8 +309,12 @@ async function main() {
       `colusiones ${paco.colusiones.size} · obras ${paco.obras.size} (documentos indexados)`,
   );
 
+  console.log("Cargando procesos…");
+  const procesos = await loadProcesos();
+  console.log(`  ${procesos.size} procesos indexados por portafolio\n`);
+
   console.log("Precalculando agregados de corpus…");
-  const ctx = buildContext(contratos, TODAY, PISO, { paco });
+  const ctx = buildContext(contratos, TODAY, PISO, { paco, procesos });
   console.log(`  ${ctx.peersByEntitySupplier.size} pares entidad-proveedor`);
   console.log(`  ${ctx.comparables.size} grupos de comparables (tipo × departamento)`);
   const conMasa = [...ctx.comparables.values()].filter((g) => g.n >= 30).length;

@@ -1,39 +1,40 @@
 {
-  "name": "tekel-ai",
-  "version": "0.1.0",
-  "private": true,
-  "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "ingest": "tsx scripts/ingest.ts",
-    "apply-rules": "tsx scripts/apply-rules.ts",
-    "enrich": "tsx scripts/enrich.ts",
-    "preview-expediente": "tsx scripts/preview-expediente.ts",
-    "probe-croma": "tsx scripts/probe-croma.ts",
-    "load-paco": "tsx scripts/load-paco.ts"
-  },
-  "dependencies": {
-    "@supabase/supabase-js": "^2.112.3",
-    "next": "16.3.1",
-    "react": "19.2.8",
-    "react-dom": "19.2.8",
-    "zod": "^4.4.3"
-  },
-  "devDependencies": {
-    "@tailwindcss/postcss": "^4",
-    "@types/node": "^20.19.43",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "eslint": "^9",
-    "eslint-config-next": "16.3.1",
-    "tailwindcss": "^4",
-    "tsx": "^4.23.12",
-    "typescript": "^5",
-    "vitest": "^4.1.10"
-  },
-  "packageManager": "pnpm@11.22.0"
+    "name":  "tekel-ai",
+    "version":  "0.1.0",
+    "private":  true,
+    "scripts":  {
+                    "dev":  "next dev",
+                    "build":  "next build",
+                    "start":  "next start",
+                    "lint":  "eslint",
+                    "test":  "vitest run",
+                    "test:watch":  "vitest",
+                    "ingest":  "tsx scripts/ingest.ts",
+                    "apply-rules":  "tsx scripts/apply-rules.ts",
+                    "enrich":  "tsx scripts/enrich.ts",
+                    "preview-expediente":  "tsx scripts/preview-expediente.ts",
+                    "probe-croma":  "tsx scripts/probe-croma.ts",
+                    "load-paco":  "tsx scripts/load-paco.ts",
+                    "ingest-processes":  "tsx scripts/ingest-processes.ts"
+                },
+    "dependencies":  {
+                         "@supabase/supabase-js":  "^2.112.3",
+                         "next":  "16.3.1",
+                         "react":  "19.2.8",
+                         "react-dom":  "19.2.8",
+                         "zod":  "^4.4.3"
+                     },
+    "devDependencies":  {
+                            "@tailwindcss/postcss":  "^4",
+                            "@types/node":  "^20.19.43",
+                            "@types/react":  "^19",
+                            "@types/react-dom":  "^19",
+                            "eslint":  "^9",
+                            "eslint-config-next":  "16.3.1",
+                            "tailwindcss":  "^4",
+                            "tsx":  "^4.23.12",
+                            "typescript":  "^5",
+                            "vitest":  "^4.1.10"
+                        },
+    "packageManager":  "pnpm@11.22.0"
 }
