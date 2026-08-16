@@ -1,0 +1,23 @@
+contratos P1+P2: 254 · con documentos: 252 · sin: 2
+
+==================================================================
+P1 CO1.PCCNTR.7734070
+  entidad:   ALCALDIA DE PUERTO COLOMBIA
+  proveedor: ASOCIACION REGIONAL DE MUNICIPIOS DEL CARIBE
+  modalidad: Contratación directa · firma 2025-04-03 · vigente
+  valor:     271505520
+  url:       https://community.secop.gov.co/Public/Tendering/OpportunityDetail/Index?noticeUID=CO1.NTC.7937302&isFromPublicArea=True&isModal=true&asPopupView=true
+  identificadores: proceso_de_compra=CO1.BDOS.7919913 · id_contrato=CO1.PCCNTR.7734070
+  proceso_de_compra: CO1.BDOS.7919913
+
+==================================================================
+P2 CO1.PCCNTR.7798032
+  entidad:   DISTRITO ESPECIAL INDUSTRIAL Y PORTUARIO DE BARRANQUILLA
+  proveedor: PUERTA DE ORO EMPRESA DE DESARROLLO CARIBE SAS
+  modalidad: Contratación directa · firma 2025-04-22 · vigente
+  valor:     22000000000
+  url:       https://community.secop.gov.co/Public/Tendering/OpportunityDetail/Index?noticeUID=CO1.NTC.8019557&isFromPublicArea=True&isModal=true&asPopupView=true
+  identificadores: proceso_de_compra=CO1.BDOS.8002141 · id_contrato=CO1.PCCNTR.7798032
+  proceso_de_compra: CO1.BDOS.8002141
+
+FIN

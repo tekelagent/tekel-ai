@@ -26,6 +26,8 @@ const { values: args } = parseArgs({
   options: {
     limit: { type: "string" },
     lote: { type: "string", default: "40" },
+    /** Salta los contratos que ya tienen agregados: retoma una corrida cortada. */
+    resume: { type: "boolean", default: false },
   },
 });
 
@@ -158,6 +160,24 @@ function agregar(filas: ReturnType<typeof mapRow>[]): Agregado {
   };
 }
 
+/**
+ * Reintento con backoff. La corrida completa son ~19.000 escrituras contra
+ * Supabase: a esa escala un `fetch failed` transitorio no es una posibilidad
+ * remota, es una certeza, y perder 11.000 contratos de trabajo por uno solo
+ * no es aceptable.
+ */
+async function conReintentos<T>(que: string, fn: () => Promise<T>): Promise<T> {
+  for (let intento = 1; intento <= 5; intento++) {
+    try {
+      return await fn();
+    } catch (e) {
+      if (intento === 5) throw new Error(`${que}: ${(e as Error).message}`);
+      await new Promise((r) => setTimeout(r, 1000 * 2 ** (intento - 1)));
+    }
+  }
+  throw new Error(`${que}: inalcanzable`);
+}
+
 function enLotes<T>(xs: T[], n: number): T[][] {
   const out: T[][] = [];
   for (let i = 0; i < xs.length; i += n) out.push(xs.slice(i, i + n));
@@ -168,13 +188,15 @@ async function traerIds(): Promise<string[]> {
   const ids: string[] = [];
   const PAGE = 1000;
   for (let offset = 0; ; offset += PAGE) {
-    let q = supabase
+    // `pagos_filas is null` = nunca consultado. Un 0 significa consultado y sin
+    // rastro, que es un resultado válido y no debe repetirse.
+    const base = supabase
       .from("contracts")
       .select("id_contrato")
       .neq("vigencia", "otro")
       .order("id_contrato", { ascending: true })
       .range(offset, offset + PAGE - 1);
-    const { data, error } = await q;
+    const { data, error } = await (args.resume ? base.is("pagos_filas", null) : base);
     if (error) throw new Error(error.message);
     if (!data?.length) break;
     ids.push(...data.map((d) => d.id_contrato as string));
@@ -198,7 +220,9 @@ async function main() {
 
   for (const lote of lotes) {
     const lista = lote.map((id) => `'${id.replace(/'/g, "''")}'`).join(",");
-    const crudas = await socrata(`id_del_contrato in(${lista})`);
+    const crudas = await conReintentos("socrata", () =>
+      socrata(`id_del_contrato in(${lista})`),
+    );
     const filas = crudas.filter((f) => f.id_del_contrato && f.id_de_pago).map(mapRow);
     filasTotales += filas.length;
 
@@ -208,10 +232,12 @@ async function main() {
     for (const f of filas) unicas.set(`${f.id_contrato}|${f.id_pago}`, f);
 
     if (unicas.size) {
-      const { error } = await supabase
-        .from("payments")
-        .upsert([...unicas.values()], { onConflict: "id_contrato,id_pago" });
-      if (error) throw new Error(`upsert payments: ${error.message}`);
+      await conReintentos("upsert payments", async () => {
+        const { error } = await supabase
+          .from("payments")
+          .upsert([...unicas.values()], { onConflict: "id_contrato,id_pago" });
+        if (error) throw new Error(error.message);
+      });
     }
 
     // Agregados por contrato — incluidos los que no trajeron ninguna fila,
@@ -236,14 +262,16 @@ async function main() {
       }
       return { id, agg };
     });
-    const errores = await Promise.all(
-      updates.map(async ({ id, agg }) => {
-        const { error } = await supabase.from("contracts").update(agg).eq("id_contrato", id);
-        return error ? `${id}: ${error.message}` : null;
-      }),
-    );
-    const fallo = errores.find(Boolean);
-    if (fallo) throw new Error(`update contracts ${fallo}`);
+    // Una sola escritura para todo el lote, vía la función SQL. Cuarenta
+    // UPDATE en paralelo saturaban la conexión y la corrida se caía a mitad.
+    // Ojo: supabase-js NO lanza los fallos de red, los devuelve en `error`;
+    // hay que relanzarlos para que el reintento los vea.
+    await conReintentos("aplicar_agregados_pagos", async () => {
+      const { error } = await supabase.rpc("aplicar_agregados_pagos", {
+        datos: updates.map(({ id, agg }) => ({ id_contrato: id, ...agg })),
+      });
+      if (error) throw new Error(error.message);
+    });
 
     hecho += lote.length;
     if (hecho % 400 === 0 || hecho === ids.length) {
