@@ -20,6 +20,8 @@
         "bakeoff-pliego": "tsx scripts/bakeoff-pliego.ts",
         "spike-secop-xhr": "tsx scripts/spike-secop-xhr.ts",
         "spike-stealth": "tsx scripts/spike-stealth.ts",
+        "probe-captcha": "tsx scripts/probe-captcha.ts",
+        "discover-docs": "tsx scripts/discover-docs.ts",
         "e2e-analisis": "tsx scripts/e2e-analisis.ts",
         "precompute-deep": "tsx scripts/precompute-deep.ts"
     },

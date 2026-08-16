@@ -29,8 +29,16 @@ export const desequilibrioPagos: Rule = {
     // Los tres campos son obligatorios: sin ellos la regla se abstiene en vez
     // de suponer (METODOLOGIA §6.1).
     if (!c.fecha_inicio || !c.fecha_fin) return null;
-    if (!isNum(c.valor_pagado) || c.valor_pagado < 0) return null;
     if (!isNum(c.valor_contrato) || c.valor_contrato <= 0) return null;
+
+    // Fuente del desembolso. El plan de pagos de SECOP manda cuando existe:
+    // es factura por factura, con fecha real, frente a un agregado que la
+    // entidad autodeclara. Importa para algo más que la precisión — un
+    // contrato con `valor_pagado = 0` en el dataset de contratos pero con
+    // pagos reales en el plan quedaría invisible para esta regla.
+    const conPlan = isNum(c.pagos_filas) && c.pagos_filas > 0 && isNum(c.pagos_confirmados);
+    const pagado = conPlan ? c.pagos_confirmados! : c.valor_pagado;
+    if (!isNum(pagado) || pagado < 0) return null;
 
     // Materialidad: no inundar a los equipos con contratos pequeños.
     if (c.valor_contrato < ctx.pisoMaterialidad) return null;
@@ -46,13 +54,13 @@ export const desequilibrioPagos: Rule = {
     if (transcurridosDias >= duracionDias) return null;
 
     const pctTiempo = transcurridosDias / duracionDias;
-    const pctPagado = c.valor_pagado / c.valor_contrato;
+    const pctPagado = pagado / c.valor_contrato;
     // Se redondea ANTES de comparar: en coma flotante 0.35 - 0.10 da
     // 24.999999999999996, que dejaría fuera el borde exacto del umbral.
     const brechaPp = Number(((pctPagado - pctTiempo) * 100).toFixed(4));
     if (brechaPp < brechaMinimaPp) return null;
 
-    const pendiente = c.valor_contrato - c.valor_pagado;
+    const pendiente = c.valor_contrato - pagado;
 
     return makeFinding({
       contract: c,
@@ -62,14 +70,25 @@ export const desequilibrioPagos: Rule = {
       detail:
         `Ha transcurrido el ${formatPct(pctTiempo)} del plazo del contrato, pero ya ` +
         `se ha desembolsado el ${formatPct(pctPagado)} de su valor: ` +
-        `${formatCOP(c.valor_pagado)} de ${formatCOP(c.valor_contrato)}. Son ` +
-        `${brechaPp.toFixed(1)} puntos porcentuales de diferencia entre lo pagado y ` +
+        `${formatCOP(pagado)} de ${formatCOP(c.valor_contrato)}` +
+        (conPlan
+          ? `, verificado contra el plan de pagos de SECOP (${c.pagos_filas} facturas)`
+          : ` según lo reportado por la entidad`) +
+        `. Son ${brechaPp.toFixed(1)} puntos porcentuales de diferencia entre lo pagado y ` +
         `el avance esperado por tiempo. Quedan ${formatCOP(pendiente)} por desembolsar ` +
         `y ${duracionDias - transcurridosDias} días de plazo. ` +
         `Criterio: ${citaNormativa(CODE)}.`,
       evidence: {
         valor_contrato: c.valor_contrato,
-        valor_pagado: c.valor_pagado,
+        valor_pagado: pagado,
+        fuente_del_pago: conPlan ? "plan_de_pagos_secop" : "dataset_de_contratos",
+        ...(conPlan
+          ? {
+              facturas_registradas: c.pagos_filas,
+              valor_pagado_segun_entidad: c.valor_pagado,
+              ultimo_desembolso: c.pagos_ultima_fecha,
+            }
+          : {}),
         valor_pendiente: pendiente,
         pct_pagado: Number(pctPagado.toFixed(4)),
         pct_tiempo_transcurrido: Number(pctTiempo.toFixed(4)),

@@ -20,11 +20,19 @@ export type Contract = {
   url_proceso: string
   valor_verificar: boolean
   /**
-   * false = la entidad no reportó ejecución, así que `plata_en_riesgo` es el
-   * valor total del contrato y no una cifra pendiente confirmada. La UI debe
-   * decirlo: afirmar "todo está en riesgo" sin ese dato sería inventar.
+   * De dónde sale `plata_en_riesgo`, que es lo que determina qué puede afirmar
+   * la UI sin inventar:
+   *   corroborado → contrastado con el plan de pagos de SECOP, factura a factura
+   *   reportado   → la entidad reportó ejecución en el dataset de contratos
+   *   sin_rastro  → no hay rastro de pagos, así que la cifra es el valor total
    */
-  plata_reportada: boolean
+  plata_procedencia: "corroborado" | "reportado" | "sin_rastro"
+  /** Facturado ya aprobado o radicado que todavía no ha salido. */
+  pagos_en_tramite: number | null
+  /** Facturas en el plan de pagos de SECOP. 0 o null = sin rastro. */
+  pagos_filas: number | null
+  /** Fecha del último desembolso corroborado. */
+  pagos_ultima_fecha: string | null
 }
 
 export type Finding = {

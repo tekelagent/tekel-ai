@@ -76,6 +76,13 @@ const COLUMNS = [
   "url_proceso",
   "valor_verificar",
   "representante_id",
+  // Plan de pagos (uymx-8p3j): desambigua el valor_pagado = 0.
+  "pagos_confirmados",
+  "pagos_en_tramite",
+  "pagos_filas",
+  "pagos_ultima_fecha",
+  "supervisor_nombre",
+  "supervisor_documento",
   "liquidacion:raw->>liquidaci_n",
   "supervisor_doc:raw->>n_mero_de_documento_supervisor",
 ].join(",");

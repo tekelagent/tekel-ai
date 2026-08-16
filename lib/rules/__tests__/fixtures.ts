@@ -42,6 +42,14 @@ export function contract(overrides: Partial<ContractRow> = {}): ContractRow {
     representante_id: "22222222",
     url_proceso: "https://community.secop.gov.co/Public/Tendering/prueba",
     valor_verificar: false,
+    // Sin plan de pagos por defecto: el contrato inocuo no debe apoyarse en
+    // una fuente que la mayoría de los tests no está ejercitando.
+    pagos_confirmados: null,
+    pagos_en_tramite: null,
+    pagos_filas: null,
+    pagos_ultima_fecha: null,
+    supervisor_nombre: null,
+    supervisor_documento: null,
     raw: {},
     ...overrides,
   };

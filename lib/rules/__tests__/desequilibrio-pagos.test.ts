@@ -18,6 +18,45 @@ const HOY = "2025-01-11";
 const run = (c: ReturnType<typeof contract>, hoy = HOY) =>
   desequilibrioPagos.run(c, soloCtx(c, hoy));
 
+describe("DESEQUILIBRIO_PAGOS — fuente del desembolso", () => {
+  it("usa el plan de pagos de SECOP cuando existe, no lo que declara la entidad", () => {
+    // La entidad reporta cero, pero el plan de pagos prueba $70M desembolsados.
+    // Sin esta preferencia el contrato sería invisible para la regla.
+    const c = contract({
+      valor_contrato: 200_000_000,
+      valor_pagado: 0,
+      pagos_filas: 5,
+      pagos_confirmados: 70_000_000,
+      fecha_inicio: "2025-01-01",
+      fecha_fin: "2025-04-11",
+    });
+    const f = run(c);
+    expect(f).not.toBeNull();
+    expect(f!.evidence.valor_pagado).toBe(70_000_000);
+    expect(f!.evidence.fuente_del_pago).toBe("plan_de_pagos_secop");
+    expect(f!.evidence.valor_pagado_segun_entidad).toBe(0);
+  });
+
+  it("no dispara si el plan de pagos confirma que no ha salido nada", () => {
+    const c = contract({
+      valor_contrato: 200_000_000,
+      // La entidad declara un pago alto...
+      valor_pagado: 180_000_000,
+      // ...pero ninguna factura figura pagada en el plan.
+      pagos_filas: 4,
+      pagos_confirmados: 0,
+      fecha_inicio: "2025-01-01",
+      fecha_fin: "2025-04-11",
+    });
+    expect(run(c)).toBeNull();
+  });
+
+  it("cae al dataset de contratos cuando no hay plan de pagos", () => {
+    const f = run(conPagado(70_000_000))!;
+    expect(f.evidence.fuente_del_pago).toBe("dataset_de_contratos");
+  });
+});
+
 describe("DESEQUILIBRIO_PAGOS — dispara", () => {
   it("con una brecha de exactamente 25 pp (umbral inclusivo de METODOLOGIA §3)", () => {
     // 35% pagado contra 10% de tiempo = 25.00 pp

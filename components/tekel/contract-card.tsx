@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { AlertTriangle, ArrowUpRight, Building2, Landmark, Wallet } from "lucide-react"
+import { AlertTriangle, ArrowUpRight, Building2, CheckCircle2, Landmark, Wallet } from "lucide-react"
 import type { Contract, Filters } from "@/lib/types"
 import { abbreviateCOP, formatDateShort } from "@/lib/format"
 import { priorityTone, riskColor } from "./meta"
@@ -17,14 +17,14 @@ export function ContractCard({ contract: c, modo, patrones = [] }: ContractCardP
   const tone = priorityTone(c.prioridad)
   const color = riskColor(c.risk_level)
   const primaryReason = c.porque_ahora[0]
-  // Si la entidad no reportó ejecución, la cifra es el valor total del
-  // contrato, no un pendiente confirmado. La etiqueta lo dice.
+  // La etiqueta dice de dónde sale la cifra. Sin rastro de pagos es el valor
+  // total del contrato, no un pendiente confirmado, y no debe leerse igual.
   const riesgoLabel =
     modo === "historico"
       ? "Pagado bajo revisión"
-      : c.plata_reportada
-        ? "Plata en riesgo"
-        : "Sin ejecución reportada"
+      : c.plata_procedencia === "sin_rastro"
+        ? "Sin rastro de pagos"
+        : "Plata en riesgo"
 
   return (
     <Link
@@ -113,6 +113,14 @@ export function ContractCard({ contract: c, modo, patrones = [] }: ContractCardP
           </div>
         </div>
       </div>
+
+      {c.plata_procedencia === "corroborado" && c.pagos_filas ? (
+        <div className="relative mt-3 inline-flex items-center gap-1.5 self-start rounded-full border border-ok/30 bg-ok/10 px-2.5 py-1 text-[11px] font-medium text-ok">
+          <CheckCircle2 className="size-3.5" aria-hidden="true" />
+          Contrastado con el plan de pagos de SECOP · {c.pagos_filas}{" "}
+          {c.pagos_filas === 1 ? "factura" : "facturas"}
+        </div>
+      ) : null}
 
       {c.valor_verificar && (
         <div className="relative mt-3 inline-flex items-center gap-1.5 self-start rounded-full border border-warn/30 bg-warn-soft px-2.5 py-1 text-[11px] font-medium text-warn">

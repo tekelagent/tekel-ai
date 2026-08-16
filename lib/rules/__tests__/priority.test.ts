@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { patronesIndependientes, plataEnRiesgo, triar } from "../priority";
+import { detallePlataEnRiesgo, patronesIndependientes, plataEnRiesgo, triar } from "../priority";
 import { PISO_MATERIALIDAD_COP } from "../thresholds";
 import { contract, finding } from "./fixtures";
 
@@ -39,6 +39,75 @@ describe("plataEnRiesgo — METODOLOGIA §4", () => {
   it("en históricos es lo ya pagado, como techo del posible detrimento", () => {
     const c = contract({ vigencia: "historico", valor_pagado: 700_000_000 });
     expect(plataEnRiesgo(c)).toBe(700_000_000);
+  });
+
+  it("marca sin_rastro cuando no hay pagos reportados ni plan de pagos", () => {
+    const c = contract({
+      vigencia: "vigente",
+      valor_contrato: 900_000_000,
+      valor_pagado: 0,
+      valor_pendiente_ejecucion: 900_000_000,
+      pagos_filas: null,
+    });
+    const d = detallePlataEnRiesgo(c);
+    // La cifra sigue siendo el valor total —el desembolso tampoco consta—
+    // pero queda marcada para que la UI no la presente como hecho.
+    expect(d.valor).toBe(900_000_000);
+    expect(d.procedencia).toBe("sin_rastro");
+  });
+
+  it("con plan de pagos y ninguna factura pagada, el cero queda corroborado", () => {
+    const c = contract({
+      vigencia: "vigente",
+      valor_contrato: 900_000_000,
+      valor_pagado: 0,
+      valor_pendiente_ejecucion: 900_000_000,
+      pagos_filas: 6,
+      pagos_confirmados: 0,
+      pagos_en_tramite: 400_000_000,
+    });
+    const d = detallePlataEnRiesgo(c);
+    expect(d.valor).toBe(900_000_000);
+    expect(d.procedencia).toBe("corroborado");
+    expect(d.enTramite).toBe(400_000_000);
+  });
+
+  it("el plan de pagos manda sobre valor_pendiente_ejecucion cuando ambos existen", () => {
+    const c = contract({
+      vigencia: "vigente",
+      valor_contrato: 1_000_000_000,
+      // SECOP dice que queda todo pendiente...
+      valor_pendiente_ejecucion: 1_000_000_000,
+      valor_pagado: 0,
+      // ...pero el plan de pagos prueba 300M ya desembolsados.
+      pagos_filas: 4,
+      pagos_confirmados: 300_000_000,
+    });
+    const d = detallePlataEnRiesgo(c);
+    expect(d.valor).toBe(700_000_000);
+    expect(d.procedencia).toBe("corroborado");
+  });
+
+  it("en históricos corroborados el techo es lo pagado según el plan", () => {
+    const c = contract({
+      vigencia: "historico",
+      valor_pagado: 0,
+      pagos_filas: 3,
+      pagos_confirmados: 250_000_000,
+    });
+    const d = detallePlataEnRiesgo(c);
+    expect(d.valor).toBe(250_000_000);
+    expect(d.procedencia).toBe("corroborado");
+  });
+
+  it("no se corrobora nada si el valor reportado es inverosímil", () => {
+    const c = contract({
+      valor_verificar: true,
+      pagos_filas: 5,
+      pagos_confirmados: 100_000_000,
+    });
+    expect(detallePlataEnRiesgo(c).procedencia).toBe("sin_rastro");
+    expect(plataEnRiesgo(c)).toBeNull();
   });
 
   it("es null cuando el valor reportado es inverosímil (METODOLOGIA §6.8)", () => {

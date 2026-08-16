@@ -18,7 +18,9 @@ const COLUMNS =
   "id,id_contrato,nombre_entidad,nit_entidad,departamento,ciudad,tipo_de_contrato,modalidad," +
   "objeto,estado_contrato,vigencia,valor_contrato,valor_pagado,valor_pendiente_ejecucion," +
   "fecha_firma,fecha_inicio,fecha_fin,proveedor,documento_proveedor,url_proceso," +
-  "risk_score,risk_level,prioridad,plata_en_riesgo,porque_ahora,resumen_riesgo,valor_verificar";
+  "risk_score,risk_level,prioridad,plata_en_riesgo,porque_ahora,resumen_riesgo,valor_verificar," +
+  // Plan de pagos: la UI las necesita para saber si puede afirmar la cifra.
+  "pagos_confirmados,pagos_en_tramite,pagos_filas,pagos_ultima_fecha";
 
 const ORDENES: Record<string, { col: string; asc: boolean }> = {
   plata: { col: "plata_en_riesgo", asc: false },

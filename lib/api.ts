@@ -40,26 +40,36 @@ export function aContract(row: Record<string, unknown>): Contract {
     porque_ahora: Array.isArray(row.porque_ahora) ? (row.porque_ahora as string[]) : [],
     url_proceso: s(row.url_proceso),
     valor_verificar: Boolean(row.valor_verificar),
-    plata_reportada: plataFueReportada(row),
+    plata_procedencia: procedenciaPlata(row),
+    pagos_en_tramite: row.pagos_en_tramite == null ? null : n(row.pagos_en_tramite),
+    pagos_filas: row.pagos_filas == null ? null : n(row.pagos_filas),
+    pagos_ultima_fecha: row.pagos_ultima_fecha == null ? null : s(row.pagos_ultima_fecha),
   };
 }
 
 /**
- * ¿La cifra en riesgo viene de una ejecución reportada, o es el valor total
- * porque la entidad no reportó nada? En el corpus de Atlántico, 7.929 contratos
- * en ejecución declaran `valor_pagado = 0`: eso es dato ausente, no ejecución
- * cero, y la interfaz tiene que distinguirlo.
+ * ¿De dónde sale la cifra en riesgo? Espeja `detallePlataEnRiesgo` de
+ * `lib/rules/priority.ts`, que es donde vive el criterio; aquí solo se traduce
+ * la fila de la base a lo que la interfaz necesita saber para no afirmar de más.
+ *
+ * El caso que obliga a distinguir: 12.784 contratos vigentes declaran
+ * `valor_pagado = 0`. Con el plan de pagos de SECOP se sabe si ese cero es un
+ * hecho (hay facturas, ninguna pagada) o un vacío de reporte (no hay nada).
  */
-function plataFueReportada(row: Record<string, unknown>): boolean {
+function procedenciaPlata(row: Record<string, unknown>): Contract["plata_procedencia"] {
+  const filas = row.pagos_filas == null ? 0 : n(row.pagos_filas);
+  if (filas > 0) return "corroborado";
+
   const vigencia = s(row.vigencia);
   const pagado = row.valor_pagado === null ? null : n(row.valor_pagado);
-  if (vigencia === "historico") return pagado !== null && pagado > 0;
+  if (vigencia === "historico") return pagado !== null && pagado > 0 ? "reportado" : "sin_rastro";
 
   const valor = row.valor_contrato === null ? null : n(row.valor_contrato);
   const pendiente =
     row.valor_pendiente_ejecucion === null ? null : n(row.valor_pendiente_ejecucion);
-  const sinEjecucion = (pagado === null || pagado === 0) && (pendiente === null || pendiente === valor);
-  return !sinEjecucion;
+  const sinEjecucion =
+    (pagado === null || pagado === 0) && (pendiente === null || pendiente === valor);
+  return sinEjecucion ? "sin_rastro" : "reportado";
 }
 
 /** Un hallazgo del expediente, con su norma ya resuelta desde el catálogo. */

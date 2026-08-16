@@ -20,7 +20,10 @@ const COLUMNS =
   "valor_facturado,valor_pendiente_ejecucion,pago_adelantado,valor_pago_adelantado," +
   "dias_adicionados,fecha_firma,fecha_inicio,fecha_fin,documento_proveedor,proveedor," +
   "representante_id,url_proceso,valor_verificar,risk_score,risk_level,prioridad," +
-  "plata_en_riesgo,porque_ahora,resumen_riesgo";
+  "plata_en_riesgo,porque_ahora,resumen_riesgo," +
+  // Plan de pagos (uymx-8p3j): sustenta la procedencia de la cifra en riesgo.
+  "pagos_confirmados,pagos_en_tramite,pagos_filas,pagos_ultima_fecha," +
+  "supervisor_nombre,supervisor_documento";
 
 export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;

@@ -133,6 +133,37 @@ La **prioridad** añade urgencia, materialidad y corroboración:
 `plata_en_riesgo`: en vigentes, valor_pendiente_ejecucion (o valor − pagado);
 en históricos, valor_pagado como techo del posible detrimento.
 
+#### Procedencia de la cifra
+
+`valor_pagado = 0` es ambiguo en el dataset de contratos: puede significar "no
+se ha pagado" o "la entidad no reportó". No es un caso marginal — 12.784
+contratos vigentes del corpus lo reportan en cero, y 7.929 de ellos figuran
+"En ejecución". Tratar ese cero como un hecho sería afirmar lo que el dato no
+sostiene (§6.1); tratarlo siempre como vacío sería renunciar a una señal real.
+
+El **plan de pagos de SECOP II** (datos.gov.co `uymx-8p3j`, 20,8M filas) lo
+desambigua factura por factura, con estado y fecha real de pago. Su fidelidad se
+validó contra el propio SECOP: en los contratos que sí reportan pago, la suma de
+las filas en estado "Pagado" coincide con `valor_pagado` (194 de 199 en la
+muestra, ninguno excede el valor del contrato).
+
+Toda cifra de plata en riesgo lleva por tanto una **procedencia**, y la interfaz
+está obligada a mostrarla:
+
+| Procedencia | Condición | Qué se puede afirmar |
+|---|---|---|
+| `corroborado` | hay plan de pagos para el contrato | El desembolso, con su fecha. Si no hay ninguna factura pagada, el cero es un hecho verificado, no un vacío. |
+| `reportado` | sin plan de pagos, pero la entidad reportó ejecución | Lo que la entidad declara, como declaración suya. |
+| `sin_rastro` | ni pagos reportados ni plan de pagos | Nada sobre la ejecución. La cifra mostrada es el valor total del contrato y debe etiquetarse como tal. |
+
+Cuando hay plan de pagos, este manda sobre `valor_pendiente_ejecucion`: es
+evidencia por factura frente a un agregado autodeclarado.
+
+El plan de pagos aporta además `pagos_en_tramite` —facturado aprobado o radicado
+que todavía no ha salido—, que es la señal más temprana disponible de plata a
+punto de desembolsarse, y el supervisor del contrato, segunda fuente para
+MISMO_SUPERVISOR.
+
 Piso de materialidad configurable (default COP $100M) para P1 en patrones de
 contrato individual. Corroboración: dos hallazgos de la misma familia (p.ej. dos
 reglas de planeación) cuentan como uno para el requisito de independencia.

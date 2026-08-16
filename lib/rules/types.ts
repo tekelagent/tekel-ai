@@ -47,6 +47,21 @@ export type ContractRow = {
   url_proceso: string | null;
   /** true = el valor reportado es inverosímil (METODOLOGIA §6.8). */
   valor_verificar: boolean;
+  /**
+   * Plan de pagos de SECOP II (dataset uymx-8p3j), factura por factura.
+   * Desambigua el `valor_pagado = 0`: sin estas columnas no se distingue
+   * "no se ha pagado" de "la entidad no reportó".
+   *   pagos_filas = 0 (o null) → sin rastro, no se afirma nada
+   *   pagos_filas > 0          → hay plan, y `pagos_confirmados` es el
+   *                              desembolso corroborado con fecha real
+   */
+  pagos_confirmados: number | null;
+  /** Facturado aprobado o radicado que aún no sale. Plata comprometida. */
+  pagos_en_tramite: number | null;
+  pagos_filas: number | null;
+  pagos_ultima_fecha: string | null;
+  supervisor_nombre: string | null;
+  supervisor_documento: string | null;
   /** Fila cruda de SECOP. Las reglas la usan solo para campos no mapeados. */
   raw: Record<string, unknown> | null;
 };
@@ -211,13 +226,21 @@ export function docDigitos(s: string | null | undefined): string | null {
   return v.length >= 5 ? v : null;
 }
 
-/** Cédula del supervisor, que vive en la fila cruda y no en columna propia. */
+/**
+ * Cédula del supervisor. Vive en la fila cruda del dataset de contratos y, si
+ * allí falta, en el plan de pagos — que lo trae por contrato. Dos fuentes para
+ * lo mismo amplían la cobertura de MISMO_SUPERVISOR sin costo.
+ */
 export function supervisorDoc(c: ContractRow): string | null {
   const v = c.raw?.["n_mero_de_documento_supervisor"];
-  if (v === undefined || v === null) return null;
-  const s = String(v).trim();
-  if (!s || /^no\s/i.test(s)) return null;
-  return docDigitos(s);
+  if (v !== undefined && v !== null) {
+    const s = String(v).trim();
+    if (s && !/^no\s/i.test(s)) {
+      const doc = docDigitos(s);
+      if (doc) return doc;
+    }
+  }
+  return docDigitos(c.supervisor_documento);
 }
 
 /** Una regla determinista de la Capa A. */

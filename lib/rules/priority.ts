@@ -46,28 +46,55 @@ export function plataEnRiesgo(c: ContractRow): number | null {
 }
 
 /**
+ * De dónde sale la cifra de plata en riesgo. Determina qué se puede afirmar.
+ *
+ *   `reportado`    la entidad reportó ejecución en el dataset de contratos.
+ *   `corroborado`  el plan de pagos (uymx-8p3j) confirma el estado de
+ *                  desembolso factura por factura. Es la evidencia más fuerte.
+ *   `sin_rastro`   ni pagos reportados ni plan de pagos. No se afirma nada.
+ */
+export type ProcedenciaPlata = "reportado" | "corroborado" | "sin_rastro";
+
+/**
  * Plata en riesgo con su procedencia.
  *
- * La distinción importa y no es cosmética: en el corpus de Atlántico, 7.929
- * contratos **en ejecución** reportan `valor_pagado = 0`. Eso casi nunca
- * significa que no se haya desembolsado nada — significa que la entidad no
- * reportó la ejecución. Decir "todo el contrato está en riesgo" en esos casos
- * sería afirmar un hecho que el dato no sostiene (METODOLOGIA §6.1).
+ * El problema que resuelve: 12.784 contratos vigentes reportan
+ * `valor_pagado = 0`, y 7.929 de ellos están "En ejecución". Leído solo contra
+ * el dataset de contratos, ese cero es ambiguo — puede ser "no se ha pagado" o
+ * "la entidad no reportó" — y tratarlo como lo primero sería afirmar un hecho
+ * que el dato no sostiene (METODOLOGIA §6.1).
  *
- * Se sigue usando la cifra para priorizar, porque el desembolso tampoco está
- * confirmado, pero queda marcada como no reportada para que la UI lo diga.
+ * El plan de pagos de SECOP II lo desambigua. Validación sobre 400 contratos
+ * (scripts/probe-pagos.ts): en los que SÍ reportan pago, la suma de facturas
+ * en estado "Pagado" coincide con `valor_pagado` al peso. La fuente es fiel,
+ * así que su silencio también significa algo: si hay plan de pagos y ninguna
+ * factura pagada, el cero es real y ahora sí se puede afirmar.
  */
 export function detallePlataEnRiesgo(c: ContractRow): {
   valor: number | null;
-  /** false = la entidad no reportó ejecución; la cifra es el valor del contrato. */
-  reportado: boolean;
+  procedencia: ProcedenciaPlata;
+  /** Facturado que ya está aprobado o radicado y todavía no ha salido. */
+  enTramite: number | null;
 } {
-  if (c.valor_verificar) return { valor: null, reportado: false };
-  if (c.vigencia === "otro") return { valor: null, reportado: false };
+  const nada = { valor: null, procedencia: "sin_rastro" as const, enTramite: null };
+  if (c.valor_verificar) return nada;
+  if (c.vigencia === "otro") return nada;
+
+  // El plan de pagos manda cuando existe: es evidencia por factura, con fecha.
+  const conPlan = typeof c.pagos_filas === "number" && c.pagos_filas > 0;
+  const confirmados = typeof c.pagos_confirmados === "number" ? c.pagos_confirmados : null;
+  const enTramite = typeof c.pagos_en_tramite === "number" ? c.pagos_en_tramite : null;
 
   if (c.vigencia === "historico") {
+    if (conPlan && confirmados !== null) {
+      return { valor: confirmados, procedencia: "corroborado", enTramite };
+    }
     const pagado = typeof c.valor_pagado === "number" && c.valor_pagado >= 0 ? c.valor_pagado : null;
-    return { valor: pagado, reportado: pagado !== null && pagado > 0 };
+    return {
+      valor: pagado,
+      procedencia: pagado !== null && pagado > 0 ? "reportado" : "sin_rastro",
+      enTramite: null,
+    };
   }
 
   const valor = typeof c.valor_contrato === "number" ? c.valor_contrato : null;
@@ -75,19 +102,24 @@ export function detallePlataEnRiesgo(c: ContractRow): {
   const pendiente =
     typeof c.valor_pendiente_ejecucion === "number" ? c.valor_pendiente_ejecucion : null;
 
-  // Sin pagos y con el pendiente igual al valor total: la entidad no reportó
-  // ejecución. Se prioriza igual, pero no se afirma que nada se haya gastado.
+  if (conPlan && valor !== null && confirmados !== null) {
+    const resto = valor - confirmados;
+    return { valor: resto > 0 ? resto : 0, procedencia: "corroborado", enTramite };
+  }
+
+  // Sin plan de pagos: se vuelve al dataset de contratos, y su cero es ambiguo.
   const sinEjecucionReportada =
     (pagado === null || pagado === 0) && (pendiente === null || pendiente === valor);
+  const procedencia: ProcedenciaPlata = sinEjecucionReportada ? "sin_rastro" : "reportado";
 
   if (pendiente !== null && pendiente > 0) {
-    return { valor: pendiente, reportado: !sinEjecucionReportada };
+    return { valor: pendiente, procedencia, enTramite };
   }
   if (valor !== null && pagado !== null) {
     const resto = valor - pagado;
-    return { valor: resto > 0 ? resto : 0, reportado: !sinEjecucionReportada };
+    return { valor: resto > 0 ? resto : 0, procedencia, enTramite };
   }
-  return { valor: null, reportado: false };
+  return nada;
 }
 
 /**
@@ -138,20 +170,41 @@ function componerPorqueAhora(
   const razones: string[] = [];
 
   if (c.vigencia === "vigente" && plata !== null && plata > 0) {
-    const { reportado } = detallePlataEnRiesgo(c);
-    razones.push(
-      reportado
-        ? `Quedan ${formatCOP(plata)} sin desembolsar según lo reportado: la intervención ` +
-          `temprana puede evitar que salgan.`
-        : `La entidad no ha reportado ejecución de este contrato de ${formatCOP(plata)}. ` +
-          `No consta cuánto se ha desembolsado, así que la cifra en riesgo es el valor total ` +
-          `hasta que la entidad reporte.`,
-    );
+    const { procedencia, enTramite } = detallePlataEnRiesgo(c);
+    if (procedencia === "corroborado") {
+      const facturas = c.pagos_filas ?? 0;
+      razones.push(
+        `Quedan ${formatCOP(plata)} sin desembolsar, verificado contra el plan de pagos ` +
+          `de SECOP (${facturas} ${facturas === 1 ? "factura" : "facturas"}): la ` +
+          `intervención temprana puede evitar que salgan.`,
+      );
+      if (enTramite !== null && enTramite > 0) {
+        razones.push(
+          `${formatCOP(enTramite)} ya están facturados y aprobados o radicados, ` +
+            `pendientes de desembolso.`,
+        );
+      }
+    } else if (procedencia === "reportado") {
+      razones.push(
+        `Quedan ${formatCOP(plata)} sin desembolsar según lo reportado: la intervención ` +
+          `temprana puede evitar que salgan.`,
+      );
+    } else {
+      razones.push(
+        `No consta ejecución de este contrato de ${formatCOP(plata)}: ni pagos reportados ` +
+          `por la entidad ni facturas en el plan de pagos de SECOP. La cifra en riesgo es ` +
+          `el valor total mientras no haya rastro.`,
+      );
+    }
   }
 
   if (c.vigencia === "historico" && plata !== null && plata > 0) {
+    const { procedencia } = detallePlataEnRiesgo(c);
     razones.push(
-      `Ya se desembolsaron ${formatCOP(plata)}, que es el techo del posible detrimento.`,
+      procedencia === "corroborado"
+        ? `Ya se desembolsaron ${formatCOP(plata)} —verificado factura por factura en el ` +
+          `plan de pagos de SECOP—, que es el techo del posible detrimento.`
+        : `Ya se desembolsaron ${formatCOP(plata)}, que es el techo del posible detrimento.`,
     );
   }
 
