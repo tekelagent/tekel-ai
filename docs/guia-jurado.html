@@ -1,9 +1,5 @@
 <title>Cómo revisar Tekel Agent</title>
 <style>
-  /* ── Tokens ────────────────────────────────────────────────────────
-     Paleta de tinta de registro: neutros con sesgo azul (papel de libro
-     contable, no crema), tinta índigo de sello para la estructura, y un
-     único ocre reservado a la plata que todavía puede detenerse.        */
   :root {
     --ground:  #eef1f6;
     --surface: #ffffff;
@@ -13,9 +9,7 @@
     --rule:    #d3dae6;
     --accent:  #26407a;
     --flag:    #9c5a16;
-    --flag-bg: #f6ecdd;
-    --ok:      #2c6a4e;
-    --shadow:  0 1px 2px rgba(19, 24, 41, .05), 0 8px 24px -16px rgba(19, 24, 41, .28);
+    --shadow:  0 1px 2px rgba(19, 24, 41, .05), 0 10px 30px -18px rgba(19, 24, 41, .32);
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
@@ -27,9 +21,7 @@
       --rule:    #29313f;
       --accent:  #90a7dd;
       --flag:    #dda65a;
-      --flag-bg: #2a2317;
-      --ok:      #67b992;
-      --shadow:  0 1px 2px rgba(0, 0, 0, .4), 0 8px 24px -16px rgba(0, 0, 0, .7);
+      --shadow:  0 1px 2px rgba(0, 0, 0, .4), 0 10px 30px -18px rgba(0, 0, 0, .75);
     }
   }
   :root[data-theme="dark"] {
@@ -41,15 +33,8 @@
     --rule:    #29313f;
     --accent:  #90a7dd;
     --flag:    #dda65a;
-    --flag-bg: #2a2317;
-    --ok:      #67b992;
-    --shadow:  0 1px 2px rgba(0, 0, 0, .4), 0 8px 24px -16px rgba(0, 0, 0, .7);
+    --shadow:  0 1px 2px rgba(0, 0, 0, .4), 0 10px 30px -18px rgba(0, 0, 0, .75);
   }
-
-  /* ── Tipografía ───────────────────────────────────────────────────
-     Serif de libro para los títulos (el vocabulario es el del expediente),
-     sans del sistema para leer, y monoespaciada para todo lo que es dato:
-     cifras, identificadores de contrato, URLs.                          */
   :root {
     --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
     --sans:  system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
@@ -60,29 +45,33 @@
 
   body {
     margin: 0;
+    min-height: 100vh;
     background: var(--ground);
     color: var(--ink);
     font-family: var(--sans);
-    font-size: 16px;
-    line-height: 1.65;
+    line-height: 1.6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 1.25rem;
     -webkit-font-smoothing: antialiased;
   }
 
-  .page {
-    max-width: 46rem;
-    margin: 0 auto;
-    padding: 3.5rem 1.25rem 5rem;
-    display: flex;
-    flex-direction: column;
-    gap: 3rem;
+  .card {
+    width: 100%;
+    max-width: 34rem;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
   }
 
-  /* ── Portada ──────────────────────────────────────────────────── */
-  .cover { display: flex; flex-direction: column; gap: 1rem; }
+  .main { padding: 2rem 1.75rem 1.75rem; display: flex; flex-direction: column; gap: .85rem; }
 
   .eyebrow {
     font-family: var(--mono);
-    font-size: .7rem;
+    font-size: .68rem;
     letter-spacing: .14em;
     text-transform: uppercase;
     color: var(--muted);
@@ -91,432 +80,86 @@
 
   h1 {
     font-family: var(--serif);
-    font-size: clamp(2rem, 6vw, 2.9rem);
+    font-size: clamp(1.6rem, 5vw, 2.1rem);
     font-weight: 600;
-    line-height: 1.1;
+    line-height: 1.15;
     letter-spacing: -.015em;
     text-wrap: balance;
     margin: 0;
   }
 
-  .lede { margin: 0; font-size: 1.075rem; color: var(--muted); text-wrap: pretty; }
-
-  .epigraph {
-    font-family: var(--serif);
-    font-style: italic;
-    font-size: .95rem;
-    color: var(--muted);
-    border-left: 2px solid var(--rule);
-    padding-left: 1rem;
-    margin: .25rem 0 0;
-  }
-
-  /* ── Tarjeta de acceso ────────────────────────────────────────── */
-  .access {
-    background: var(--surface);
-    border: 1px solid var(--rule);
-    border-radius: 10px;
-    box-shadow: var(--shadow);
-    overflow: hidden;
-  }
-
-  .access-main { padding: 1.5rem 1.5rem 1.25rem; display: flex; flex-direction: column; gap: .5rem; }
-
-  .access-label {
-    font-family: var(--mono);
-    font-size: .68rem;
-    letter-spacing: .14em;
-    text-transform: uppercase;
-    color: var(--muted);
-  }
+  p { margin: 0; text-wrap: pretty; }
 
   .url {
     font-family: var(--mono);
-    font-size: clamp(1rem, 3.6vw, 1.4rem);
+    font-size: clamp(1.05rem, 4.2vw, 1.5rem);
     font-weight: 600;
     color: var(--accent);
     text-decoration: none;
     word-break: break-all;
     border-bottom: 2px solid transparent;
     transition: border-color .15s;
+    margin-top: .35rem;
   }
   .url:hover, .url:focus-visible { border-bottom-color: var(--accent); }
   .url:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 2px; }
 
-  .access-note { font-size: .875rem; color: var(--muted); margin: 0; }
+  .note { font-size: .9rem; color: var(--muted); }
 
   .stats {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
     border-top: 1px solid var(--rule);
     background: var(--sunken);
   }
-  .stat { padding: .85rem 1rem; border-right: 1px solid var(--rule); }
+  .stat { padding: .8rem 1rem; border-right: 1px solid var(--rule); }
   .stat:last-child { border-right: 0; }
   .stat dt {
     font-family: var(--mono);
-    font-size: .64rem;
+    font-size: .62rem;
     letter-spacing: .1em;
     text-transform: uppercase;
     color: var(--muted);
-    margin: 0 0 .2rem;
+    margin: 0 0 .15rem;
   }
   .stat dd {
     font-family: var(--mono);
     font-variant-numeric: tabular-nums;
-    font-size: 1.05rem;
+    font-size: 1rem;
     font-weight: 600;
     margin: 0;
   }
   .stat dd.flag { color: var(--flag); }
 
-  /* ── Secciones ────────────────────────────────────────────────── */
-  section { display: flex; flex-direction: column; gap: 1rem; }
-
-  h2 {
-    font-family: var(--serif);
-    font-size: 1.45rem;
-    font-weight: 600;
-    letter-spacing: -.01em;
-    margin: 0;
-    padding-bottom: .55rem;
-    border-bottom: 1px solid var(--rule);
-  }
-
-  p { margin: 0; text-wrap: pretty; }
-
-  /* ── Recorrido numerado ───────────────────────────────────────
-     La numeración va porque el recorrido ES una secuencia de clics,
-     no porque decore.                                              */
-  .tour { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 1.5rem; }
-
-  .step { display: grid; grid-template-columns: 2.1rem 1fr; gap: 1rem; align-items: start; }
-
-  .step-n {
-    font-family: var(--mono);
-    font-size: .8rem;
-    font-weight: 600;
-    color: var(--accent);
-    background: var(--sunken);
-    border: 1px solid var(--rule);
-    border-radius: 5px;
-    width: 2.1rem;
-    height: 2.1rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-variant-numeric: tabular-nums;
-  }
-
-  .step-body { display: flex; flex-direction: column; gap: .4rem; padding-top: .1rem; }
-  .step-body h3 { font-size: 1rem; font-weight: 650; margin: 0; letter-spacing: -.005em; }
-  .step-body p { font-size: .95rem; }
-
-  /* ── Elementos de interfaz citados ────────────────────────────── */
-  .ui {
-    font-family: var(--sans);
-    font-size: .875em;
-    font-weight: 600;
-    background: var(--sunken);
-    border: 1px solid var(--rule);
-    border-radius: 4px;
-    padding: .05em .4em;
-    white-space: nowrap;
-  }
-
-  code, .data {
-    font-family: var(--mono);
-    font-size: .875em;
-    font-variant-numeric: tabular-nums;
-  }
-
-  /* ── Tabla de significados ────────────────────────────────────── */
-  .table-wrap { overflow-x: auto; border: 1px solid var(--rule); border-radius: 8px; background: var(--surface); }
-  table { border-collapse: collapse; width: 100%; font-size: .9rem; }
-  th, td { text-align: left; padding: .7rem .9rem; border-bottom: 1px solid var(--rule); vertical-align: top; }
-  tr:last-child td { border-bottom: 0; }
-  thead th {
-    font-family: var(--mono);
-    font-size: .66rem;
-    letter-spacing: .1em;
-    text-transform: uppercase;
-    color: var(--muted);
-    font-weight: 500;
-    background: var(--sunken);
-    white-space: nowrap;
-  }
-  td:first-child { font-weight: 600; white-space: nowrap; }
-  .ochre { color: var(--flag); }
-
-  /* ── Aviso ────────────────────────────────────────────────────── */
-  .notice {
-    background: var(--flag-bg);
-    border: 1px solid var(--rule);
-    border-left: 3px solid var(--flag);
-    border-radius: 6px;
-    padding: 1rem 1.15rem;
-    font-size: .92rem;
-  }
-  .notice strong { color: var(--flag); }
-
-  .plain {
-    background: var(--surface);
-    border: 1px solid var(--rule);
-    border-radius: 8px;
-    padding: 1rem 1.15rem;
-    font-size: .92rem;
-  }
-
-  ul.tight { margin: 0; padding-left: 1.15rem; display: flex; flex-direction: column; gap: .5rem; font-size: .95rem; }
-
-  footer {
+  .foot {
     border-top: 1px solid var(--rule);
-    padding-top: 1.5rem;
-    font-size: .84rem;
+    padding: .9rem 1.75rem 1.1rem;
+    font-size: .78rem;
     color: var(--muted);
-    display: flex;
-    flex-direction: column;
-    gap: .6rem;
   }
 
-  @media (prefers-reduced-motion: reduce) {
-    * { transition: none !important; animation: none !important; }
-  }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
 
-<div class="page">
-
-  <header class="cover">
-    <p class="eyebrow">Guía de acceso · Track Tecnología para la Transparencia</p>
-    <h1>Cómo revisar Tekel Agent</h1>
-    <p class="lede">
-      Tekel audita contratación pública colombiana (SECOP II) y responde una sola
-      pregunta: de veinte mil contratos, ¿cuáles debería abrir hoy un equipo de
-      control, y por qué ese antes que otro?
+<div class="card">
+  <div class="main">
+    <p class="eyebrow">Track Tecnología para la Transparencia</p>
+    <h1>Tekel Agent</h1>
+    <p class="note">
+      Audita contratación pública colombiana (SECOP II) y dice cuáles contratos
+      debería abrir hoy un equipo de control, y por qué ese antes que otro.
     </p>
-    <p class="epigraph">
-      «MENE, MENE, TEKEL: pesado en la balanza y hallado falto.» — Daniel 5
-    </p>
-  </header>
-
-  <div class="access">
-    <div class="access-main">
-      <span class="access-label">Entrar aquí</span>
-      <a class="url" href="https://tekelagent.vercel.app">tekelagent.vercel.app</a>
-      <p class="access-note">
-        Sin registro, sin clave, sin instalar nada. Abre en cualquier navegador,
-        también en móvil. El tablero carga solo y se actualiza cada 20 segundos.
-      </p>
-    </div>
-    <dl class="stats">
-      <div class="stat">
-        <dt>Contratos</dt>
-        <dd>18.981</dd>
-      </div>
-      <div class="stat">
-        <dt>Hallazgos</dt>
-        <dd>4.297</dd>
-      </div>
-      <div class="stat">
-        <dt>Prioridad 1</dt>
-        <dd>83</dd>
-      </div>
-      <div class="stat">
-        <dt>Por salir en P1</dt>
-        <dd class="flag">$89.462 M</dd>
-      </div>
-    </dl>
+    <a class="url" href="https://tekelagent.vercel.app">tekelagent.vercel.app</a>
+    <p class="note">Sin registro ni clave. Abre en cualquier navegador.</p>
   </div>
-
-  <section>
-    <h2>El recorrido, en seis clics</h2>
-    <ol class="tour">
-
-      <li class="step">
-        <span class="step-n">1</span>
-        <div class="step-body">
-          <h3>El tablero abre por prioridad, no por tamaño</h3>
-          <p>
-            Lo primero que ve es la bandeja ordenada <strong>P1 → P2 → P3</strong>. No es
-            un ranking por valor del contrato: es el orden en que un equipo con tiempo
-            limitado debería trabajar. Arriba de todo, los contratos con más plata a
-            punto de salir.
-          </p>
-        </div>
-      </li>
-
-      <li class="step">
-        <span class="step-n">2</span>
-        <div class="step-body">
-          <h3>Cada tarjeta lleva dos cifras que no se repiten</h3>
-          <p>
-            A la izquierda, el <strong>valor del contrato</strong>. A la derecha,
-            <strong class="ochre">Por salir</strong>: facturas ya aprobadas o radicadas en
-            el plan de pagos de SECOP que todavía no se han pagado. Es plata con un
-            documento detrás y que aún se puede detener. Si no hay nada verificable,
-            aparece un guion y la ficha explica por qué — nunca se rellena con el valor
-            del contrato.
-          </p>
-        </div>
-      </li>
-
-      <li class="step">
-        <span class="step-n">3</span>
-        <div class="step-body">
-          <h3>Filtre por lo que quiera</h3>
-          <p>
-            La barra lateral permite cruzar departamento, ciudad, tipo, modalidad, valor
-            mínimo, nivel de riesgo y patrón detectado. El interruptor de arriba cambia
-            entre <span class="ui">Vigilancia activa</span> —contratos en ejecución, plata
-            en riesgo hoy— e <span class="ui">Histórico</span>, que es evidencia para entes
-            de control sobre contratos ya terminados.
-          </p>
-        </div>
-      </li>
-
-      <li class="step">
-        <span class="step-n">4</span>
-        <div class="step-body">
-          <h3>Abra cualquier contrato</h3>
-          <p>
-            Cualquiera, no una lista curada. Dentro está el expediente: cada hallazgo con
-            los <strong>puntos que aporta al score</strong>, la norma que lo sustenta, la
-            evidencia numérica que lo disparó y el «por qué ahora». Los puntos suman
-            exactamente el score que muestra el anillo — puede verificarlo sumando.
-          </p>
-        </div>
-      </li>
-
-      <li class="step">
-        <span class="step-n">5</span>
-        <div class="step-body">
-          <h3>Dispare el análisis profundo</h3>
-          <p>
-            En la ficha del contrato, el botón <span class="ui">Análisis profundo</span>
-            corre la capa cara en vivo: consulta RUES, Contraloría, Procuraduría y SECOP
-            por el documento del contratista, y un modelo de razonamiento consolida el
-            resultado. Tarda algunos segundos y el log se ve avanzar paso a paso. El
-            resultado queda en caché: el segundo clic es instantáneo y cuesta cero.
-          </p>
-        </div>
-      </li>
-
-      <li class="step">
-        <span class="step-n">6</span>
-        <div class="step-body">
-          <h3>Pruebe un contrato que no esté en el corpus</h3>
-          <p>
-            En el buscador, pegue cualquier identificador de SECOP II
-            (<code>CO1.PCCNTR.…</code>). Si no está precargado, aparece
-            <span class="ui">Analizarlo en vivo</span>: Tekel lo trae de SECOP, le corre el
-            motor de reglas contra sus contratos hermanos y verifica al contratista en los
-            registros oficiales. Es la prueba de que no hay nada guionizado.
-          </p>
-        </div>
-      </li>
-
-    </ol>
-  </section>
-
-  <section>
-    <h2>Qué significa cada cosa en pantalla</h2>
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr><th>En pantalla</th><th>Qué quiere decir</th></tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td class="ochre">Por salir</td>
-            <td>Facturado y aprobado o radicado, sin pagar. Se puede detener.</td>
-          </tr>
-          <tr>
-            <td>Ya desembolsado</td>
-            <td>Salió, con fecha real de pago. Ya no se detiene: se persigue.</td>
-          </tr>
-          <tr>
-            <td>Sin movimiento</td>
-            <td>Hay plan de pagos y ninguna factura se ha pagado ni aprobado.</td>
-          </tr>
-          <tr>
-            <td>Sin registro</td>
-            <td>Ni pagos reportados ni plan de pagos. No se afirma nada.</td>
-          </tr>
-          <tr>
-            <td>P1</td>
-            <td>Revisar de inmediato. Vigente, score ≥ 65, señales de familias normativas distintas y cuantía sobre el piso de materialidad.</td>
-          </tr>
-          <tr>
-            <td>P2</td>
-            <td>Esta semana. Crítico histórico dentro de la ventana de la acción fiscal, o vigente medio con cuantía alta.</td>
-          </tr>
-          <tr>
-            <td>P3</td>
-            <td>Monitoreo.</td>
-          </tr>
-          <tr>
-            <td>Score</td>
-            <td>Suma de los puntos de los hallazgos, con tope de 100. Bajo 0–29 · medio 30–64 · crítico 65+.</td>
-          </tr>
-          <tr>
-            <td>Confianza</td>
-            <td>Qué tan completos son los datos que sustentan el hallazgo, no qué tan grave es.</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-    <p style="font-size:.9rem;color:var(--muted)">
-      El criterio completo —los 21 patrones, sus pesos, umbrales y condiciones de
-      exclusión— está publicado dentro de la propia aplicación, en
-      <span class="ui">Metodología</span>. No es un anexo: es la fuente de verdad contra
-      la que está escrito el motor.
-    </p>
-  </section>
-
-  <section>
-    <h2>Lo que conviene mirar con lupa</h2>
-    <p>
-      Tres cosas que preferimos señalar antes de que las encuentre:
-    </p>
-    <ul class="tight">
-      <li>
-        <strong>Los críticos son el 0,56% del corpus</strong>, por debajo del rango de
-        1–3% que la propia metodología declara sano. El control de calibración lo
-        reporta en pantalla en vez de esconderlo. La razón es estructural: los patrones
-        de mayor peso son de la capa que corre por contrato, no en lote.
-      </li>
-      <li>
-        <strong>El pliego no se descarga solo.</strong> SECOP II protege la descarga de
-        documentos con reCAPTCHA. En vez de evadirlo, la aplicación pide que suba el PDF
-        y el análisis continúa. Está documentado como límite declarado, y el hecho de que
-        los pliegos públicos estén tras un captcha es en sí mismo un hallazgo de
-        transparencia.
-      </li>
-      <li>
-        <strong>Cada contrato enlaza a su proceso en SECOP.</strong> Nada de lo que Tekel
-        afirma tiene que creerse: se verifica en la fuente oficial, en un clic.
-      </li>
-    </ul>
-  </section>
-
-  <div class="notice">
-    <strong>Indicador no es imputación.</strong> Tekel Agent señala indicadores de riesgo
-    verificables en fuentes oficiales. No constituye imputación ni acusación contra
-    ninguna persona o empresa. Un hallazgo dice qué revisar y con qué norma — nunca
-    quién es culpable.
-  </div>
-
-  <footer>
-    <p>
-      Direcciones equivalentes, por si alguna falla:
-      <code>tekelai.vercel.app</code> · <code>tekel-agent.vercel.app</code> ·
-      <code>tekelapp.vercel.app</code>
-    </p>
-    <p>
-      Código y metodología abiertos en <code>github.com/tekelagent/tekel-ai</code>.
-      Datos: SECOP II y plan de pagos de datos.gov.co, más registros de Contraloría,
-      Procuraduría, SIC y el Registro de Obras Inconclusas.
-    </p>
-  </footer>
-
+  <dl class="stats">
+    <div class="stat"><dt>Contratos</dt><dd>18.981</dd></div>
+    <div class="stat"><dt>Hallazgos</dt><dd>4.297</dd></div>
+    <div class="stat"><dt>Prioridad 1</dt><dd>83</dd></div>
+    <div class="stat"><dt>Por salir</dt><dd class="flag">$89.462 M</dd></div>
+  </dl>
+  <p class="foot">
+    Señala indicadores de riesgo verificables en fuentes oficiales.
+    No constituye imputación ni acusación.
+  </p>
 </div>

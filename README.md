@@ -10,18 +10,28 @@ Tekel no prueba corrupción. Detecta las huellas que las irregularidades dejan e
 datos oficiales y las presenta en formato de hallazgo de auditoría:
 **condición · criterio · efecto**. Indicador ≠ imputación.
 
+## En vivo
+
+**[tekelagent.vercel.app](https://tekelagent.vercel.app)** — sin registro ni clave.
+
 ## Qué hace, en una frase
 
-De 20.000 contratos, señala **82 que un equipo de control debería abrir hoy**, con
-$299.281 millones de pesos aún sin desembolsar, y para cada uno dice qué mirar,
-con qué norma y dónde verificarlo.
+De 20.000 contratos, señala **83 que un equipo de control debería abrir hoy**, con
+**$89.462 millones ya facturados y aprobados que todavía no han salido**, y para
+cada uno dice qué mirar, con qué norma y dónde verificarlo.
+
+Esa cifra no es la suma de los valores de contrato: es plata con una factura
+detrás, contrastada con el plan de pagos de SECOP. Es la que todavía se puede
+detener.
 
 ## El embudo: cuatro capas de costo creciente
 
 ```
 ┌─ INGESTA ────────────────────────────────────────────────────────┐
-│  SECOP II (jbjy-vk9h) + Procesos (p6dx-8zbt) + snapshots PACO    │
-│  20.000 contratos · 2.527 procesos · 56.000 registros forenses   │
+│  SECOP II (jbjy-vk9h) + Procesos (p6dx-8zbt) + Plan de pagos     │
+│  (uymx-8p3j) + snapshots PACO                                    │
+│  20.000 contratos · 2.527 procesos · 81.143 filas de pago para   │
+│  14.040 contratos · 56.000 registros forenses                    │
 └────────────────────────────┬─────────────────────────────────────┘
                              ▼
 ┌─ CAPA A — Reglas deterministas ($0) ─────────────────────────────┐
