@@ -68,6 +68,17 @@ Responde ÚNICAMENTE con JSON:
 
 const ahora = () => new Date().toISOString();
 
+/**
+ * Un documento consultable en registros oficiales: solo dígitos, entre 4 y 15.
+ * Descarta los "No Definido" y demás marcadores que SECOP publica en el campo.
+ */
+function documentoValido(v: string | null | undefined): string | null {
+  const s = (v ?? "").trim();
+  if (!s || /^no\s/i.test(s)) return null;
+  const digitos = s.replace(/\D/g, "");
+  return digitos.length >= 4 && digitos.length <= 15 ? digitos : null;
+}
+
 /** Añade líneas al log del trabajo, preservando lo anterior. */
 async function anotar(idContrato: string, lineas: string[]) {
   if (!lineas.length) return;
@@ -155,15 +166,24 @@ async function pasoForense(idContrato: string) {
     .eq("id_contrato", idContrato)
     .maybeSingle();
 
-  if (!c?.documento_proveedor) {
-    await anotar(idContrato, ["El contrato no registra documento del contratista: se omite el forense."]);
+  // SECOP publica "No Definido" como si fuera un documento. Sin validar, se
+  // gastaban las cinco llamadas del presupuesto contra un valor que Croma
+  // rechaza — y la cuota diaria es de 500 para toda la plataforma.
+  const documento = c ? documentoValido(c.documento_proveedor) : null;
+  if (!c || !documento) {
+    await anotar(idContrato, [
+      c?.documento_proveedor
+        ? `El contrato registra "${c.documento_proveedor}" como documento del contratista, ` +
+          `que no es un número válido: no se puede verificar en fuentes oficiales.`
+        : "El contrato no registra documento del contratista: se omite la verificación forense.",
+    ]);
     await sb.from("deep_analyses").update({ stage: "forense" }).eq("id_contrato_ref", idContrato);
     return;
   }
 
   const lineas: string[] = [`Verificando a ${c.proveedor ?? "el contratista"} en fuentes oficiales…`];
   const provider = createForensicProvider();
-  const perfil: PerfilForense = await provider.perfilDeContratista(c.documento_proveedor, {
+  const perfil: PerfilForense = await provider.perfilDeContratista(documento, {
     esPrioritario: c.prioridad === "P1",
     onLog: (m) => lineas.push(m),
   });
